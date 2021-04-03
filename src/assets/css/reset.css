@@ -1,0 +1,54 @@
+* {
+    padding: 0;
+    margin: 0;
+}
+
+ul, ol, li {
+    list-style: none;
+}
+h1{
+    display: block;
+    font-size: 16px;
+    margin-block-start: 0;
+    margin-block-end: 0;
+    margin-inline-start: 0px;
+    margin-inline-end: 0px;
+}
+a {
+    color: #ffffff;
+    text-decoration: none;
+    cursor: pointer;
+}
+html, body{
+    height: 100%;
+}
+
+button {
+    outline: none;
+    border: none;
+}
+.v-md-editor-preview.github-markdown-body ul{
+    list-style: disc;
+  }
+  .v-md-editor-preview.github-markdown-body ol{
+      list-style: decimal;
+  }
+  .v-md-editor-preview.github-markdown-body li{
+      list-style:inherit;
+  }
+*::-webkit-scrollbar {
+    width: 8px!important;
+    height: 8px!important;
+}
+*::-webkit-scrollbar-thumb {
+    border-radius: 4px;
+    background-color: #999!important;
+}
+*::-webkit-scrollbar-track-piece {
+    background: #eee!important;
+}
+::selection {
+    background: #344449;
+    color: #fff;
+    text-shadow: none;
+}
