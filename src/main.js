@@ -3,6 +3,7 @@ import App from './App.vue'
 import router from './router'
 import store from './store'
 import './assets/css/reset.css'
+import './assets/css/el_notify.css'
 import axios from 'axios'
 Vue.config.productionTip = false
 axios.defaults.baseURL = "http://localhost:8081";

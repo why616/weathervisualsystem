@@ -8,7 +8,7 @@
         :value="item.value">
       </el-option>
     </el-select>
-     <div id="chart">
+     <div id="chart" ref="chart">
 
      </div>
      <div class="analyze">
@@ -86,9 +86,9 @@ export default {
             let {data} = res;
             //  console.log(data);
             this.data = data;
-            this.min = data[0][params.type];
-            this.max = data[data.length-2][params.type];
-            this.mid = data[parseInt(data.length/2)][params.type];
+            this.min = parseFloat(data[0][params.type]).toFixed(2);
+            this.max = parseFloat(data[data.length-2][params.type]).toFixed(2);
+            this.mid = parseFloat(data[parseInt(data.length/2)][params.type]).toFixed(2);
         //处理掉异常值
             data.splice(-1,1);
             //计算平均数和众数
@@ -102,7 +102,7 @@ export default {
         })
      },
      initEcharts(data){
-         var myChart = echarts.init(document.getElementById('chart'));
+         var myChart = echarts.init(this.$refs.chart);
 
         // 指定图表的配置项和数据
          var option = {
@@ -124,8 +124,6 @@ export default {
             },
             dataZoom: [{
                 type: 'inside'
-            }, {
-                type: 'slider'
             }],
             xAxis: [
                 {
@@ -183,13 +181,13 @@ export default {
             //  console.log(value,'*',element.Counts);
              avg += parseFloat(value)*element.Counts;
          });
-         this.avg = (avg/804156).toFixed(4);
-         this.mult = mult ;
+         this.avg = (avg/804156).toFixed(2);
+         this.mult = parseFloat(mult).toFixed(2) ;
      }
  },
  computed:{
      movingRange(){
-         return this.max - this.min;
+         return (this.max - this.min).toFixed(2);
      }
  }
 }
@@ -199,9 +197,10 @@ export default {
 #zzt{
     height: 100%;
     width: 100%;
+    position: relative;
     #chart{
-        padding: 10px;
-        height: 100%;
+        padding: 10px 0;
+        height: 80%;
         width: 100%;
     }
     .analyze{
