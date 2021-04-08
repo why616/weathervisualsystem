@@ -1,0 +1,126 @@
+[
+    {
+        "province": "黑龙江",
+        "value": "230000"
+    },
+    {
+        "province": "内蒙古",
+        "value": "150000"
+    },
+    {
+        "province": "吉林",
+        "value": "220000"
+    },
+    {
+        "province": "新疆",
+        "value": "650000"
+    },
+    {
+        "province": "甘肃",
+        "value": "620000"
+    },
+    {
+        "province": "青海",
+        "value": "630000"
+    },
+    {
+        "province": "河北",
+        "value": "130000"
+    },
+    {
+        "province": "山西",
+        "value": "140000"
+    },
+    {
+        "province": "宁夏",
+        "value": "640000"
+    },
+    {
+        "province": "陕西",
+        "value": "610000"
+    },
+    {
+        "province": "河南",
+        "value": "410000"
+    },
+    {
+        "province": "辽宁",
+        "value": "210000"
+    },
+    {
+        "province": "北京",
+        "value": "110000"
+    },
+    {
+        "province": "天津",
+        "value": "120000"
+    },
+    {
+        "province": "山东",
+        "value": "370000"
+    },
+    {
+        "province": "西藏",
+        "value": "540000"
+    },
+    {
+        "province": "四川",
+        "value": "510000"
+    },
+    {
+        "province": "云南",
+        "value": "530000"
+    },
+    {
+        "province": "贵州",
+        "value": "520000"
+    },
+    {
+        "province": "湖北",
+        "value": "420000"
+    },
+    {
+        "province": "重庆",
+        "value": "500000"
+    },
+    {
+        "province": "湖南",
+        "value": "430000"
+    },
+    {
+        "province": "江西",
+        "value": "360000"
+    },
+    {
+        "province": "广西",
+        "value": "450000"
+    },
+    {
+        "province": "广东",
+        "value": "440000"
+    },
+    {
+        "province": "江苏",
+        "value": "320000"
+    },
+    {
+        "province": "安徽",
+        "value": "340000"
+    },
+    {
+        "province": "上海",
+        "value": "310000"
+    },
+    {
+        "province": "浙江",
+        "value": "330000"
+    },
+    {
+        "province": "福建",
+        "value": "350000"
+    },
+    {
+        "province": "海南",
+        "value": "460000"
+    }
+]

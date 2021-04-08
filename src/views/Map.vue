@@ -25,7 +25,9 @@
       >
     </el-date-picker>
   </div>
-  
+  <div class="legend">
+      <Legend :range_color="legend"/>
+  </div>
   <div class="map_axis_msg">
       <pre>地图中心-> Lat（纬度）：{{currentLatLng.lat}} Lng（经度）：{{currentLatLng.lng}}           地图层级->  {{currentZoomLev}}</pre>
   </div>
@@ -37,33 +39,34 @@
 // import L from 'leaflet'
 // import 'leaflet-canvas-marker';
 import HeatmapOverlay from "leaflet-heatmap"
-
+import Legend from "@/components/Legend.vue"
+// import Legend from '../components/legend.vue';
 export default {
     mounted(){
-        this.fullscreenLoading = true;
+        this.fullscreenLoading = true;        
         this.$axios.get("http://localhost:8080/station.json").then(({data})=>{
             // console.log(data);
             // console.log(data.length);
             // let tempS = [];
             this.stations = data;
             
-            // let newS = this.copyStationsRestrictAttr('province');
-            // let nnewS = {}
             {/*这里是创建proviceList的代码
-                // let proviceList = [];
-                // newS = newS.forEach(i=>{
-                //     nnewS[i.province] = {label:i.province,value:i.province};
+                let newS = this.copyStationsRestrictAttr('province');
+                let nnewS = {}
+                let proviceList = [];
+                newS = newS.forEach(i=>{
+                    nnewS[i.province] = {province:i.province,value:''};
                     
-                // })
-                // for (const key in nnewS) {
-                //     if (Object.hasOwnProperty.call(nnewS, key)) {
-                //         proviceList.push(nnewS[key]);
+                })
+                for (const key in nnewS) {
+                    if (Object.hasOwnProperty.call(nnewS, key)) {
+                        proviceList.push(nnewS[key]);
                         
-                //     }
-                // }
-                // console.log(JSON.stringify(proviceList));
+                    }
+                }
+                console.log(JSON.stringify(proviceList));
             */}
-
+    
         })
         this.icon = L.icon({
             iconUrl: 'dot.svg',
@@ -110,6 +113,13 @@ export default {
         //    let marker =  L.marker(e.latlng).addTo(this.map);
         //    marker.bindPopup(`<p>经度${e.latlng.lng}</p><p>纬度${e.latlng.lat}</p>`).openPopup();
         // })
+        // let attrArr = [
+        //     'stationId',
+        //     'stationName',
+        //     'province'
+            
+        // ];
+        // console.log(this.copyStationsRestrictAttr(...attrArr));
     },
     data(){
         return {
@@ -144,15 +154,39 @@ export default {
             //当前地图的中心和层级
             currentLatLng:{},
             currentZoomLev:{},
-            fullscreenLoading:false
+            fullscreenLoading:false,
+            chinaGeoJson:'',
+            provincesGeoJsons:[],
+            geoJsonLayerGroup:{},
+            ciLayerRemoved:false,
+            legend:[
+                {range:'40+',color:'rgba(225,84,86,.6)'},
+                {range:'40~35',color:'rgba(254,1,1,.6)'},
+                {range:'35~30',color:'rgba(254,97,1,.6)'},
+                {range:'30~25',color:'rgba(254,129,1,.6)'},
+                {range:'25~20',color:'rgba(254,194,1,.6)'},
+                {range:'20~15',color:'rgba(254,254,1,.6)'},
+                {range:'15~10',color:'rgba(221,254,1,.6)'},
+                {range:'10~5',color:'rgba(147,254,1,.6)'},
+                {range:'5~0',color:'rgba(17,254,1,.6)'},
+                {range:'0~-5',color:'rgba(0,254,180,.6)'},
+                {range:'-5~-10',color:'rgba(0,254,246,.6)'},
+                {range:'-10~-15',color:'rgba(0,234,254,.6)'},
+                {range:'-15~-20',color:'rgba(0,234,254,.6)'},
+                {range:'-20~-25',color:'rgba(0,165,254,.6)'},
+                {range:'-25~-30',color:'rgba(0,100,254,.6)'},
+                {range:'-30~-35',color:'rgba(0,13,254,.6)'},
+                {range:'-35+',color:'rgba(0,13,254,.6)'}
+            ]
+
         };
     },
     methods:{
         async initMap() {
             //地图初始化
             this.map = L.map("map", {
-                minZoom: 1,
-                maxZoom: 18,
+                minZoom: 4,
+                maxZoom: 11,
                 // 30.92754182882566,118.7462081940612
                 center: [30.92754182882566,118.74488639936317],
                 zoom: 8,
@@ -202,6 +236,9 @@ export default {
 
             };
             this.heatmapLayer = new HeatmapOverlay(cfg).addTo(this.map);
+            //添加geoJson的LayerGroup
+            this.geoJsonLayerGroup =  new L.LayerGroup();
+            this.geoJsonLayerGroup.addTo(this.map);
             
             // console.log(M);
             //接下来要xhr请求数据
@@ -209,12 +246,20 @@ export default {
                 date:this.dateSelect
             }
            let {data} = await this.getMapWeatherData(params);
+           let geoJson = await this.getGeoJson();
+            // console.log(geoJson);
            data = this.stationMappingWeatherData(data);
            this.updateRequestData(data);
            this.updateShowData();
            this.createMarkers(data);
+           this.addProvincesGeoJsons(geoJson);
+           this.updateGeoJson();
+           this.addChinaGeoJson();
            this.ciLayer.addTo(this.map);
            this.ciLayer.addLayers(this.markers);
+        //    this.updateGeoJson()
+        //    this.requestDataMappingGeoJsonDataByStationName();
+
            this.fullscreenLoading = false;
             this.$message({
                 message: '加载完成',
@@ -306,7 +351,7 @@ export default {
                     //     tempT++;
                     // }
                     }
-                    s.TEM = 0;
+                    s.TEM = 999999;
                     s.Date = '该数据缺测';
                     lostDataStationsErrMsg.push(`<p>在${s.stationName}的数据缺失</p>`)
                     // console.log(`ERR：在${t},${s.stationId},${s.stationName}的数据缺失`);
@@ -380,6 +425,14 @@ export default {
         },
         onZoomLevChange(e){
             this.currentZoomLev = Math.round(this.map.getZoom());
+            if(this.currentZoomLev <= 6 && !this.ciLayerRemoved){
+                this.removeAllMarkers();
+                this.ciLayerRemoved = true;
+            }else if(this.currentZoomLev > 6 && this.ciLayerRemoved){
+                this.addMarkersToCiLayer(this.provinceMarkerFilter);
+                this.ciLayerRemoved = false;
+            }
+            
             // console.log();
         },
         onMoveStart(e){
@@ -446,7 +499,11 @@ export default {
                 this.removeAllMarkers();
                 this.createMarkers(data);
                 //    this.updateMarkerAndShowDataByProvice();
-                this.addMarkersToCiLayer(this.provinceMarkerFilter);
+                this.clearGeoJsonLayer();
+                this.updateGeoJson();
+                this.addChinaGeoJson();
+                if(!this.ciLayerRemoved)
+                    this.addMarkersToCiLayer(this.provinceMarkerFilter);
                 this.updateShowData(this.provinceWeatherDataFilter);
                 this.fullscreenLoading = false;
                 this.$message({
@@ -469,6 +526,7 @@ export default {
             this.removeAllMarkers();
             this.addMarkersToCiLayer(this.provinceMarkerFilter);
             this.updateShowData(this.provinceWeatherDataFilter);
+            if(this.provinceSelect != '全国')
             this.moveMap();
         },
         moveMap(latlng){
@@ -481,12 +539,305 @@ export default {
                 this.ciLayer.removeMarker(marker);
             }); 
              this.ciLayer.redraw();
+        },
+        async getGeoJson(){
+           {/*颜色比例卡
+             // let colorList = {
+            //     '40+':'rgba(225,84,86,.7)',
+            //     '40-35':'rgba(254,1,1,.7)',
+            //     '35-30':'rgba(254,97,1,.7)',
+            //     '30-25':'rgba(254,129,1,.7)',
+            //     '25-20':'rgba(254,194,1,.7)',
+            //     '20-15':'rgba(254,254,1,.7)',
+            //     '15-10':'rgba(221,254,1,.7)',
+            //     '10-5':'rgba(147,254,1,.7)',
+            //     '5-0':'rgba(17,254,1,.7)',
+            //     '0~-5':'rgba(0,254,180,.7)',
+            //     '-5~-10':'rgba(0,254,246,.7)',
+            //     '-10~-15':'rgba(0,234,254,.7)',
+            //     '-15~-20':'rgba(0,234,254,.7)',
+            //     '-20~-25':'rgba(0,165,254,.7)',
+            //     '-25~-30':'rgba(0,100,254,.7)',
+            //     '-30~-35':'rgba(0,13,254,.7)',
+            //     '-35~-':'rgba(0,13,254,.7)'
+            // };
+            */}
+            {/*geojson的省份与adcode的映射
+            // let list = [
+            //     {
+            //         "province": "黑龙江",
+            //         "value": "230000"
+            //     },
+            //     {
+            //         "province": "内蒙古",
+            //         "value": "150000"
+            //     },
+            //     {
+            //         "province": "吉林",
+            //         "value": "220000"
+            //     },
+            //     {
+            //         "province": "新疆",
+            //         "value": "650000"
+            //     },
+            //     {
+            //         "province": "甘肃",
+            //         "value": "620000"
+            //     },
+            //     {
+            //         "province": "青海",
+            //         "value": "630000"
+            //     },
+            //     {
+            //         "province": "河北",
+            //         "value": "130000"
+            //     },
+            //     {
+            //         "province": "山西",
+            //         "value": "140000"
+            //     },
+            //     {
+            //         "province": "宁夏",
+            //         "value": "640000"
+            //     },
+            //     {
+            //         "province": "陕西",
+            //         "value": "610000"
+            //     },
+            //     {
+            //         "province": "河南",
+            //         "value": "410000"
+            //     },
+            //     {
+            //         "province": "辽宁",
+            //         "value": "210000"
+            //     },
+            //     {
+            //         "province": "北京",
+            //         "value": "110000"
+            //     },
+            //     {
+            //         "province": "天津",
+            //         "value": "120000"
+            //     },
+            //     {
+            //         "province": "山东",
+            //         "value": "370000"
+            //     },
+            //     {
+            //         "province": "西藏",
+            //         "value": "540000"
+            //     },
+            //     {
+            //         "province": "四川",
+            //         "value": "510000"
+            //     },
+            //     {
+            //         "province": "云南",
+            //         "value": "530000"
+            //     },
+            //     {
+            //         "province": "贵州",
+            //         "value": "520000"
+            //     },
+            //     {
+            //         "province": "湖北",
+            //         "value": "420000"
+            //     },
+            //     {
+            //         "province": "重庆",
+            //         "value": "500000"
+            //     },
+            //     {
+            //         "province": "湖南",
+            //         "value": "430000"
+            //     },
+            //     {
+            //         "province": "江西",
+            //         "value": "360000"
+            //     },
+            //     {
+            //         "province": "广西",
+            //         "value": "450000"
+            //     },
+            //     {
+            //         "province": "广东",
+            //         "value": "440000"
+            //     },
+            //     {
+            //         "province": "江苏",
+            //         "value": "320000"
+            //     },
+            //     {
+            //         "province": "安徽",
+            //         "value": "340000"
+            //     },
+            //     {
+            //         "province": "上海",
+            //         "value": "310000"
+            //     },
+            //     {
+            //         "province": "浙江",
+            //         "value": "330000"
+            //     },
+            //     {
+            //         "province": "福建",
+            //         "value": "350000"
+            //     },
+            //     {
+            //         "province": "海南",
+            //         "value": "460000"
+            //     }
+            // ];
+            */}
+            // let _map={};
+            
+            // list.forEach(e=>{
+            //     _map[e.value] = e.province;
+            // })
+            // this._map = _map;
+
+            let geo = ["230000", "150000", "220000", "650000", "620000", "630000", "130000", "140000", "640000", "610000", "410000", "210000", "110000", "120000", "370000", "540000", "510000", "530000", "520000", "420000", "500000", "430000", "360000", "450000", "440000", "320000", "340000", "310000", "330000", "350000", "460000"];
+    
+            let promises = [];
+            geo.forEach((p)=>{
+                promises.push(this.$axios.get(`http://localhost:8080/geojson/${p}.json`));
+                {/*
+                    // data = JSON.parse(data);
+                // console.log(data);
+                // data.features.forEach = Array.forEach;
+                // data.features.forEach();
+
+                // Array.prototype.forEach.call(data.features,(feature)=>{
+                //     // console.log(feature.properties.name);
+                // })
+                // L.geoJSON(data,{style:_style}).addTo(this.map);
+                */}
+            })
+            let res =  Promise.all(promises);
+            // console.log(res);
+            let {data} = await this.$axios.get(`https://geo.datav.aliyun.com/areas_v2/bound/100000_full.json`);
+            this.chinaGeoJson = data;
+            return res;
+            {/*
+                // let {data} = await this.$axios.get('https://geo.datav.aliyun.com/areas_v2/bound/100000_full.json');
+                // console.log(data);
+                // // let countryGeo = JSON.parse(data);
+                // let countryGeoLayer = L.geoJSON(data,{style:_style}).addTo(this.map);
+
+                // countryGeoLayer.on('click',function(e){
+                //     console.log(e.layer.feature.properties.name) //当前点击的物体的名称
+                // });
+                // // countryGeoLayer
+                // this.map.eachLayer(l=>{
+                //     console.log(l);
+                // })
+                // console.log(this.map);
+                // geo.forEach(async (p)=>{
+                //     let {data} = await this.$axios.get(`https://geo.datav.aliyun.com/areas_v2/bound/${p}_full.json`);
+                //     L.geoJSON(data,{style:_style}).addTo(this.map)
+                // })
+                // console.log(geo);
+                // console.log();
+            */}
+        },
+        addChinaGeoJson(){
+            let myStyle = {
+                "color": "#00f",
+                "weight": 2,
+                "opacity": 0.5,
+                fillColor: 'rgba(255, 255, 255,0)'
+            };
+            L.geoJSON(this.chinaGeoJson,{style:myStyle}).addTo(this.geoJsonLayerGroup);
+        },
+        getColor(tem){
+            return  tem == 999999 ? 'rgba(0,0,0,1)':
+                    tem > 40 ? 'rgba(225,84,86,1)':
+                    tem > 35 ? 'rgba(254,1,1,1)':
+                    tem > 30 ? 'rgba(254,97,1,1)':
+                    tem > 25 ? 'rgba(254,129,1,1)':
+                    tem > 20 ? 'rgba(254,194,1,1)':
+                    tem > 15 ? 'rgba(254,254,1,1)':
+                    tem > 10 ? 'rgba(221,254,1,1)':
+                    tem > 5 ? 'rgba(147,254,1,1)':
+                    tem > 0 ? 'rgba(17,254,1,1)':
+                    tem > -5 ? 'rgba(0,254,180,1)':
+                    tem > -10 ? 'rgba(0,254,246,1)':
+                    tem > -15 ? 'rgba(0,234,254,1)':
+                    tem > -20 ? 'rgba(0,234,254,1)':
+                    tem > -25 ? 'rgba(0,165,254,1)':
+                    tem > -30 ? 'rgba(0,100,254,1)':
+                    tem > -35 ? 'rgba(0,13,254,1)':
+                    tem > -40 ? 'rgba(0,13,254,1)':'rgba(0,13,254,1)'
+        },
+        requestDataMappingGeoJsonDataByStationName(){
+            let mappingData = {};
+            let reqdata = this.requestData;
+            reqdata.forEach((d)=>{
+                mappingData[d.stationName] = d;
+            })
+            // console.log(mappingData);
+            return mappingData;
+        },
+        updateGeoJson(weatherMsg){
+            weatherMsg = weatherMsg || 'TEM';
+            let t = 0;
+            // let news =['嫩江','青冈','呼中','达茂旗','鄂托克旗','海拉尔','临河','集宁','锡林浩特','乌海','永吉','延吉','米泉','呼图壁','博乐','焉耆','阿克苏','乌恰','喀什','和田','精河','托里','阿克达拉','玛纳斯','柯坪','昌吉','福海','库尔勒','博乐','精河','墨玉','克拉玛依','榆中','酒泉','永昌','崆峒','西峰','安定','武都','临夏','合作','平安','互助','同仁','共和','玛沁','玉树','格尔木','正定','榆次','忻府区','离石','泾河','秦都','甘泉','商州','伊川','宝丰','淇县','川汇区','盘山','彰武','大洼','兴城','朝阳','海淀','东丽','东丽','东丽','东丽','东丽','塘沽','文登','墨竹工卡','拉孜','泽当','改则','双流','泸县','什邡','三台','东兴区','蓬安','达川','芦山','马尔康','新龙','德昌','思茅','牟定','个旧','砚山','勐海','大理','芒市','福贡','香格里拉','六枝','桐梓','贞丰','凯里','平塘','大冶','恩施','神农架','长寿','沙坪坝','沙坪坝','沙坪坝','沙坪坝','沙坪坝','垫江','长寿','忠县','石柱','秀山','酉阳','彭水','冷水江','赫山','芷江','吉首','南康','吉安县','宜黄','平南','北流','大新','南海','新会','高要','惠阳','梅县','金坛','盐都','丹徒','桐城','黟县','徐家汇','徐家汇','徐家汇','徐家汇','浦东','浦东','鄞州','柯桥','龙游','定海','洪家','安溪','南靖','建阳','保亭','白沙','昌江','五指山','保亭','保亭','琼中'];
+            let mappingData = this.requestDataMappingGeoJsonDataByStationName();
+            // console.log(this.provincesGeoJsons);
+            let _style = (feature)=>{
+                // console.log('得到数值：',feature.properties.value,'得到颜色:',this.getColor(feature.properties.value));
+                return {
+                            weight: 2,
+                            opacity: 1,
+                            color: 'white',
+                            dashArray: '5',
+                            fillOpacity: .5,
+                            // rgb(254, 178, 76)
+                            //默认是0.2，不重新设置color会很淡     
+                            fillColor: this.getColor(feature.properties.value)
+                        };
+            } 
+            this.provincesGeoJsons.forEach((province)=>{
+                let features = province.features;
+                // let prov = features[0].properties.parent.adcode;
+                features.forEach(({properties})=>{
+                    // console.log();
+                    let data = mappingData[properties.name.slice(0,-1)] || mappingData[properties.name2];
+                    if(data){
+                        // console.log('已找到数据：',data);
+                        //这里的value只能是一个值，用于渲染热力图，默认为TEM，实际上应该通过参数传入
+                        properties.value = data[weatherMsg];
+                    }else{
+                        console.log('geojso地区名为：',properties.name,' 的数据缺失');
+                        // properties.name2 = news[t];
+                        properties.value = 999999;
+                        t++;
+                    }
+                })
+                    // console.log(prov,JSON.stringify(province));
+                    //渲染上图
+                L.geoJSON(province,{style:_style}).addTo(this.geoJsonLayerGroup);
+            })
+            console.log(t);
+        },
+        addProvincesGeoJsons(geojson){
+            geojson.forEach(({data})=>{
+                this.provincesGeoJsons.push(data);
+            })
+            // this.provincesGeoJsons  = geojson;
+        },
+        clearGeoJsonLayer(){
+            this.map.removeLayer(this.geoJsonLayerGroup);
+            this.geoJsonLayerGroup = new L.LayerGroup();
+            this.geoJsonLayerGroup.addTo(this.map);
         }
 
-
-
     },
-
+    components:{
+        Legend
+    
+    }
     
 }
 </script>
@@ -501,6 +852,14 @@ export default {
     #map{
         height: 100%;
         overflow: hidden;
+    }
+    .legend{
+        position: absolute;
+        bottom: 17px;
+        right: 0px;
+        width: 11%;
+        z-index: 1900;
+
     }
     .restrict_select{
         position: absolute;

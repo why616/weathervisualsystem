@@ -1386,7 +1386,7 @@
     {"stationId":57486,"province":"湖北","stationName":"汉川","stationType":"一般站","lng":113.85000000000001,"lat":30.650000000000002,"observeAlti":"25.0 ","pressAlti":"26.0 "},
     {"stationId":57489,"province":"湖北","stationName":"蔡甸","stationType":"一般站","lng":114,"lat":30.516666666666666,"observeAlti":"23.6 ","pressAlti":"24.9 "},
     {"stationId":57492,"province":"湖北","stationName":"新洲","stationType":"一般站","lng":114.83333333333333,"lat":30.833333333333332,"observeAlti":"40.7 ","pressAlti":"41.6 "},
-    {"stationId":57494,"province":"湖北","stationName":"武汉","stationType":"基本站","lng":114.05,"lat":30.599999999999998,"observeAlti":"23.6 ","pressAlti":"24.6 "},
+    {"stationId":57494,"province":"湖北","stationName":"武汉","stationType":"基本站","lng":114.311011,"lat":30.598218,"observeAlti":"23.6 ","pressAlti":"24.6 "},
     {"stationId":57495,"province":"湖北","stationName":"团风","stationType":"一般站","lng":114.88333333333334,"lat":30.666666666666664,"observeAlti":"28.1 ","pressAlti":"29.6 "},
     {"stationId":57496,"province":"湖北","stationName":"鄂州","stationType":"一般站","lng":114.61666666666667,"lat":30.249999999999996,"observeAlti":"35.3 ","pressAlti":"36.5 "},
     {"stationId":57498,"province":"湖北","stationName":"黄冈","stationType":"一般站","lng":114.93333333333334,"lat":30.516666666666666,"observeAlti":"26.2 ","pressAlti":"26.9 "},
