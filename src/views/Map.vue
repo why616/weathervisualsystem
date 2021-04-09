@@ -4,7 +4,7 @@
      
   </div>
   <div class="restrict_select">
-    <el-select v-model="provinceSelect" @change="updateMarkerAndShowDataByProvice"  label="全国" placeholder="请选择">
+    <el-select v-model="provinceSelect" @change="updateMarkerAndShowDataByProvice"  label="全国" placeholder="请选择" :disabled="provinceSelecterDisable">
       <el-option
         v-for="item in proviceList"
         :key="item.value"
@@ -30,6 +30,9 @@
   </div>
   <div class="map_axis_msg">
       <pre>地图中心-> Lat（纬度）：{{currentLatLng.lat}} Lng（经度）：{{currentLatLng.lng}}           地图层级->  {{currentZoomLev}}</pre>
+  </div>
+  <div class="function-bar">
+      <el-button type="primary" icon="el-icon-edit" @click="changeSelectProvinceMode" circle></el-button>
   </div>
 </div>
 </template>
@@ -177,7 +180,9 @@ export default {
                 {range:'-25~-30',color:'rgba(0,100,254,.6)'},
                 {range:'-30~-35',color:'rgba(0,13,254,.6)'},
                 {range:'-35+',color:'rgba(0,13,254,.6)'}
-            ]
+            ],
+            _ciLayerDOM:{},
+            provinceSelecterDisable:false
 
         };
     },
@@ -202,12 +207,10 @@ export default {
                 // "http://wprd04.is.autonavi.com/appmaptile?lang=zh_cn&size=1&style=7&x={x}&y={y}&z={z}"
                 "http://rt0.map.gtimg.com/realtimerender?z={z}&x={x}&y={-y}&type=vector&style=0",{preferCanvas: true}
             ).addTo(this.map);
+            
             //海量点组件
             this.ciLayer = L.canvasIconLayer({});
-            this.ciLayer.addOnClickListener(function(e, data) {
-                // console.log(data);
-                // markerIconShow(data[0].data);
-            }); 
+            
             var cfg = {
                 // radius should be small ONLY if scaleRadius is true (or small radius is intended)
                 // if scaleRadius is false it will be the constant radius used in pixels
@@ -236,6 +239,8 @@ export default {
 
             };
             this.heatmapLayer = new HeatmapOverlay(cfg).addTo(this.map);
+            
+            
             //添加geoJson的LayerGroup
             this.geoJsonLayerGroup =  new L.LayerGroup();
             this.geoJsonLayerGroup.addTo(this.map);
@@ -255,11 +260,15 @@ export default {
            this.addProvincesGeoJsons(geoJson);
            this.updateGeoJson();
            this.addChinaGeoJson();
-           this.ciLayer.addTo(this.map);
-           this.ciLayer.addLayers(this.markers);
+           this.addCiLayerToMap();
+           this.addMarkersToCiLayer();
+        //    this.ciLayer.addTo(this.map);
+        //    this.ciLayer.addLayers(this.markers);
+
+
         //    this.updateGeoJson()
         //    this.requestDataMappingGeoJsonDataByStationName();
-
+           this._data._ciLayerDOM = document.getElementsByClassName('leaflet-canvas-icon-layer')[0];
            this.fullscreenLoading = false;
             this.$message({
                 message: '加载完成',
@@ -401,7 +410,8 @@ export default {
 
             // console.log(markers);
             // this.ciLayer.redraw();
-
+            // this.ciLayer.bringToFront();
+            // console.log(this.ciLayer);
             this.ciLayer.addLayers(newMarkers);
             this.showMarkers = newMarkers;
             // this.map.flyTo(newMarkers[Math.round(newMarkers.length/2)].getLatLng());
@@ -425,13 +435,26 @@ export default {
         },
         onZoomLevChange(e){
             this.currentZoomLev = Math.round(this.map.getZoom());
+            if(this.provinceSelect =='全国')
             if(this.currentZoomLev <= 6 && !this.ciLayerRemoved){
+                console.log("全国");
                 this.removeAllMarkers();
+                // this.geoJsonLayerGroup.setZIndex(99999);
+                // this.ciLayer.setZIndex(0);
+                // console.log(L);
+                // this.ciLayer = L.canvasIconLayer = null;
+                // this.map.removeLayer();
+                // this.allLayersGroup.setZIndex(900);
+                this.hideCiLayerFromMap();
                 this.ciLayerRemoved = true;
             }else if(this.currentZoomLev > 6 && this.ciLayerRemoved){
+                // this.addCiLayerToMap();
+                this.showCiLayerFromMap();
+                // this.geoJsonLayerGroup.bringToBack();
                 this.addMarkersToCiLayer(this.provinceMarkerFilter);
                 this.ciLayerRemoved = false;
             }
+            
             
             // console.log();
         },
@@ -524,7 +547,11 @@ export default {
         },
         updateMarkerAndShowDataByProvice(){
             this.removeAllMarkers();
-            this.addMarkersToCiLayer(this.provinceMarkerFilter);
+
+                this.showCiLayerFromMap();
+                this.addMarkersToCiLayer(this.provinceMarkerFilter);
+                this.ciLayerRemoved = false;
+            
             this.updateShowData(this.provinceWeatherDataFilter);
             if(this.provinceSelect != '全国')
             this.moveMap();
@@ -539,6 +566,9 @@ export default {
                 this.ciLayer.removeMarker(marker);
             }); 
              this.ciLayer.redraw();
+        },
+        addShowMarkers(){
+
         },
         async getGeoJson(){
            {/*颜色比例卡
@@ -748,7 +778,7 @@ export default {
                 "opacity": 0.5,
                 fillColor: 'rgba(255, 255, 255,0)'
             };
-            L.geoJSON(this.chinaGeoJson,{style:myStyle}).addTo(this.geoJsonLayerGroup);
+            L.geoJSON(this.chinaGeoJson,{style:myStyle,onEachFeature:this.onEachFeature}).addTo(this.geoJsonLayerGroup);
         },
         getColor(tem){
             return  tem == 999999 ? 'rgba(0,0,0,1)':
@@ -831,8 +861,76 @@ export default {
             this.map.removeLayer(this.geoJsonLayerGroup);
             this.geoJsonLayerGroup = new L.LayerGroup();
             this.geoJsonLayerGroup.addTo(this.map);
-        }
+        },
+        onEachFeature(feature, layer){
+            layer.on({
+                mouseover: this.highlightFeature,
+                mouseout: this.resetHighlight,
+                click: this.zoomToFeature
+            })
+        },
+        highlightFeature(e){
+            let layer = e.target;
+            layer.setStyle({
+                fillColor: "rgba(255, 255, 255,1)",
+                fillOpacity:0.7
+            });
+            // console.log("highlight",layer);
 
+        },
+        resetHighlight(e){
+            let layer = e.target;
+            layer.setStyle(layer.defaultOptions.style);
+        },
+        zoomToFeature(e){
+            console.log(e.target);
+            let specialName = {
+                '广西壮族自治区':'广西',
+                '西藏自治区':'西藏',
+                '新疆维吾尔自治区':'新疆',
+                '宁夏回族自治区':'宁夏',
+                '内蒙古自治区':'内蒙古'
+
+            }
+            this.provinceSelect = specialName[e.target.feature.properties.name] || e.target.feature.properties.name.slice(0,-1);
+            this.map.fitBounds(e.target.getBounds());
+            this.provinceSelecterDisable = false;
+            this.addMarkersToCiLayer(this.provinceMarkerFilter);
+            this.showCiLayerFromMap();
+
+            let center = e.target.feature.properties.center;
+            // this.map.flyToBounds(e.target.getBounds());
+            // this.map.flyTo({lat:center[1],lng:center[0]});
+            
+            
+            
+        },
+        addCiLayerToMap(){
+            this.ciLayer.addTo(this.map);
+        },
+        hideCiLayerFromMap(){
+            // this.ciLayerLayersGroup.setZIndex(99);
+            this._data._ciLayerDOM.style.zIndex = '99';
+            
+        },
+        showCiLayerFromMap(){
+            this._data._ciLayerDOM.style.zIndex = '100';
+        },
+        changeSelectProvinceMode(){
+            // console.log(e);
+            this.ciLayerRemoved = true;
+            this.provinceSelect = '选择中';
+            this.provinceSelecterDisable = true;
+            this.removeAllMarkers();
+            this.hideCiLayerFromMap();
+            this.$message({
+                    message: '点击高亮区域选择省份',
+                    type: 'info',
+                    duration:2000,
+                    offset:60
+
+                });
+        }
     },
     components:{
         Legend
@@ -846,6 +944,9 @@ export default {
 .el-notification.notifyclass.right{
     right: 25%;
 }
+.z-down{
+    z-index: 101;
+}
 .map-app{
     height: 100%;
     position: relative;
@@ -857,7 +958,7 @@ export default {
         position: absolute;
         bottom: 17px;
         right: 0px;
-        width: 11%;
+        width: 15%;
         z-index: 1900;
 
     }
@@ -884,6 +985,15 @@ export default {
         z-index: 1900;
         font-size: 15px;
         font-weight: bold;
+    }
+    .function-bar{
+        position: absolute;
+        top:5px;
+        right: 5px;
+        width: 40px;
+        height: 40px;
+        z-index: 2001;
+
     }
 }
 

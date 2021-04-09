@@ -20,18 +20,26 @@ export default {
 </script>
 
 <style lang="less" scoped>
-.legend-area {
+.legend-area { 
     .legend{
-        background-color: rgba(245, 245, 245, 1);
+        background-color: rgba(255, 255, 255, 1);
         border-radius: 6px;
         padding: 10px;
         box-shadow: 0px 5px 15px rgba(0,0,0,0.3);
         line-height: 18px;
         font-size: 15px;
+        div{
+            height: 18px;
+        }
+        span{
+            vertical-align: top;
+        }
         i{
             width: 18px;
             height: 18px;
-            float: left;
+            // float: left;
+            display: inline-block;
+
             margin-right: 5px;
         }
     }
