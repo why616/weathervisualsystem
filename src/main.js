@@ -6,12 +6,12 @@ import './assets/css/reset.css'
 import './assets/css/el_notify.css'
 import axios from 'axios'
 Vue.config.productionTip = false
+//axios
 axios.defaults.baseURL = "http://localhost:8081";
 Vue.prototype.$axios = axios;
-// import {Select} from 'element-ui'
-// Vue.use(Select);
-// Vue.use(ElementUI);
 
+//bus
+Vue.prototype.$bus = new Vue();
 
 new Vue({
   router,

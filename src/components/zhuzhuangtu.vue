@@ -26,7 +26,7 @@
 // import * as echarts from 'echarts'
 export default {
  mounted(){
-     this.loadData_updatePage();
+    //  this.loadData_updatePage();
  },
  data(){
      return{

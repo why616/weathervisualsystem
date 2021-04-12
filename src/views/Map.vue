@@ -46,7 +46,11 @@ import Legend from "@/components/Legend.vue"
 // import Legend from '../components/legend.vue';
 export default {
     mounted(){
-        this.fullscreenLoading = true;        
+        this.fullscreenLoading = true; 
+        //设置chart传递的事件的监听
+        this.$bus.$on('bar-chart-select',this.handleBarChartSelect);
+        this.$bus.$on('bar-chart-cancel-select',this.handleBarChartCancelSelect);
+        //请求站点数据       
         this.$axios.get("http://localhost:8080/station.json").then(({data})=>{
             // console.log(data);
             // console.log(data.length);
@@ -71,11 +75,11 @@ export default {
             */}
     
         })
-        this.icon = L.icon({
-            iconUrl: 'dot.svg',
-            iconSize: [20, 20],
-            iconAnchor: [10, 10]
-        });
+        // this.icon = L.icon({
+        //     iconUrl: 'TEMdots/TEM40.svg',
+        //     iconSize: [20, 20],
+        //     iconAnchor: [10, 10]
+        // });
         this.initMap();
         
         console.log("Ready");
@@ -131,7 +135,7 @@ export default {
             ciLayer:{},
             heatmapLayer:{},
             //上点的图标
-            icon:{},
+            iconList:{},
             //请求到的数据与当前展示的数据
             showData:{},
             requestData:{},
@@ -144,12 +148,12 @@ export default {
             provinceSelect:'全国',
             proviceList:[{"label":"全国","value":"全国"},{"label":"黑龙江","value":"黑龙江"},{"label":"内蒙古","value":"内蒙古"},{"label":"吉林","value":"吉林"},{"label":"新疆","value":"新疆"},{"label":"甘肃","value":"甘肃"},{"label":"青海","value":"青海"},{"label":"河北","value":"河北"},{"label":"山西","value":"山西"},{"label":"宁夏","value":"宁夏"},{"label":"陕西","value":"陕西"},{"label":"河南","value":"河南"},{"label":"辽宁","value":"辽宁"},{"label":"北京","value":"北京"},{"label":"天津","value":"天津"},{"label":"山东","value":"山东"},{"label":"西藏","value":"西藏"},{"label":"四川","value":"四川"},{"label":"云南","value":"云南"},{"label":"贵州","value":"贵州"},{"label":"湖北","value":"湖北"},{"label":"重庆","value":"重庆"},{"label":"湖南","value":"湖南"},{"label":"江西","value":"江西"},{"label":"广西","value":"广西"},{"label":"广东","value":"广东"},{"label":"江苏","value":"江苏"},{"label":"安徽","value":"安徽"},{"label":"上海","value":"上海"},{"label":"浙江","value":"浙江"},{"label":"福建","value":"福建"},{"label":"海南","value":"海南"},{"label":"极地","value":"极地"}],
             //日期选择组件
-            dateSelect:'2021-03-10 00:00:00',
+            dateSelect:'2021-03-10 12:00:00',
             defaultValue:new Date(2021,2,10,0,0,0),
             pickerOption:{
                 disabledDate(time) {
                     let start = new Date(2021,2,10,0,0,0);
-                    let end = new Date(2021,3,2,23,0,0);
+                    let end = new Date(2021,3,9,12,0,0);
                     // console.log(+start);
                     return time.getTime() < start || time.getTime() > end ;
                 },
@@ -175,10 +179,10 @@ export default {
                 {range:'0~-5',color:'rgba(0,254,180,.6)'},
                 {range:'-5~-10',color:'rgba(0,254,246,.6)'},
                 {range:'-10~-15',color:'rgba(0,234,254,.6)'},
-                {range:'-15~-20',color:'rgba(0,234,254,.6)'},
+                {range:'-15~-20',color:'rgba(0,203,255,.6)'},
                 {range:'-20~-25',color:'rgba(0,165,254,.6)'},
                 {range:'-25~-30',color:'rgba(0,100,254,.6)'},
-                {range:'-30~-35',color:'rgba(0,13,254,.6)'},
+                {range:'-30~-35',color:'rgba(0,70,254,.6)'},
                 {range:'-35+',color:'rgba(0,13,254,.6)'}
             ],
             _ciLayerDOM:{},
@@ -389,7 +393,8 @@ export default {
             });
             return newStations;
         },
-        addMarkersToCiLayer(filterFn,baseMarkers){
+        addMarkersToCiLayer(filterFn,baseMarkers,keepShowMarker){
+            keepShowMarker = !keepShowMarker;
             // console.log("pre");
             // this.map.eachLayer(l=>{
             //     console.log(l);
@@ -413,7 +418,8 @@ export default {
             // this.ciLayer.bringToFront();
             // console.log(this.ciLayer);
             this.ciLayer.addLayers(newMarkers);
-            this.showMarkers = newMarkers;
+            if(keepShowMarker)
+                this.showMarkers = newMarkers;
             // this.map.flyTo(newMarkers[Math.round(newMarkers.length/2)].getLatLng());
             // console.log("then");
             // this.map.eachLayer(l=>{
@@ -433,27 +439,34 @@ export default {
             if(data.province == this.provinceSelect 
                          || this.provinceSelect == '全国') return data;
         },
+        rangeMarkerHighLevFilter(max,min){
+            return (marker)=>{
+                // console.log("该marker的TEM:",marker.TEM,"最大最小值:",max,min);
+                if (marker.TEM <= max && marker.TEM > min)  return marker;
+            }
+        },
         onZoomLevChange(e){
             this.currentZoomLev = Math.round(this.map.getZoom());
-            if(this.provinceSelect =='全国')
-            if(this.currentZoomLev <= 6 && !this.ciLayerRemoved){
-                console.log("全国");
-                this.removeAllMarkers();
-                // this.geoJsonLayerGroup.setZIndex(99999);
-                // this.ciLayer.setZIndex(0);
-                // console.log(L);
-                // this.ciLayer = L.canvasIconLayer = null;
-                // this.map.removeLayer();
-                // this.allLayersGroup.setZIndex(900);
-                this.hideCiLayerFromMap();
-                this.ciLayerRemoved = true;
-            }else if(this.currentZoomLev > 6 && this.ciLayerRemoved){
-                // this.addCiLayerToMap();
-                this.showCiLayerFromMap();
-                // this.geoJsonLayerGroup.bringToBack();
-                this.addMarkersToCiLayer(this.provinceMarkerFilter);
-                this.ciLayerRemoved = false;
-            }
+            //有了筛选功能后，地图zoom过小不需要自动隐藏ciLayer
+            // if(this.provinceSelect =='全国')
+            // if(this.currentZoomLev <= 5 && !this.ciLayerRemoved){
+            //     console.log("全国");
+            //     this.removeAllMarkers();
+            //     // this.geoJsonLayerGroup.setZIndex(99999);
+            //     // this.ciLayer.setZIndex(0);
+            //     // console.log(L);
+            //     // this.ciLayer = L.canvasIconLayer = null;
+            //     // this.map.removeLayer();
+            //     // this.allLayersGroup.setZIndex(900);
+            //     this.hideCiLayerFromMap();
+            //     this.ciLayerRemoved = true;
+            // }else if(this.currentZoomLev > 5 && this.ciLayerRemoved){
+            //     // this.addCiLayerToMap();
+            //     this.showCiLayerFromMap();
+            //     // this.geoJsonLayerGroup.bringToBack();
+            //     this.addMarkersToCiLayer(this.provinceMarkerFilter);
+            //     this.ciLayerRemoved = false;
+            // }
             
             
             // console.log();
@@ -479,6 +492,7 @@ export default {
             baseWeatherData.forEach((data)=>{
                 filterFn(data) && newShowData.push(data);
             });
+            this.$store.commit('updateShowData',newShowData);
             this.showData = newShowData;
         },
         createMarkers(data){
@@ -492,7 +506,7 @@ export default {
                 //  tempS.push(s);
                 //  console.log("parsed:",parse);
                }
-                let icon = this.icon;
+                let icon = this.getIcon(s.TEM);
                 let marker =  L.marker({lng:s.lng,lat:s.lat},{icon});
                 marker.bindPopup(`
                     <p>站点：${s.stationName}</p>
@@ -504,6 +518,7 @@ export default {
                     `
                 );
                 marker.province = s.province;
+                marker.TEM = s.TEM;
                 return marker;
             }); 
             this.markers = markers;
@@ -896,6 +911,7 @@ export default {
             this.map.fitBounds(e.target.getBounds());
             this.provinceSelecterDisable = false;
             this.addMarkersToCiLayer(this.provinceMarkerFilter);
+            this.updateShowData(this.provinceMarkerFilter);
             this.showCiLayerFromMap();
 
             let center = e.target.feature.properties.center;
@@ -930,11 +946,79 @@ export default {
                     offset:60
 
                 });
+        },
+        getIcon(tem){
+
+            //假设是温度
+            let url =  
+                    tem == 999999 ? 'TEM999999.svg':
+                    tem > 40 ? 'TEM40.svg':
+                    tem > 35 ? 'TEM35.svg':
+                    tem > 30 ? 'TEM30.svg':
+                    tem > 25 ? 'TEM25.svg':
+                    tem > 20 ? 'TEM20.svg':
+                    tem > 15 ? 'TEM15.svg':
+                    tem > 10 ? 'TEM10.svg':
+                    tem > 5 ? 'TEM5.svg': 
+                    tem > 0 ? 'TEM0.svg':
+                    tem > -5 ? 'TEM-5.svg':
+                    tem > -10 ? 'TEM-10.svg':
+                    tem > -15 ? 'TEM-15.svg':
+                    tem > -20 ? 'TEM-20.svg':
+                    tem > -25 ? 'TEM-25.svg':
+                    tem > -30 ? 'TEM-30.svg':
+                    tem > -35 ? 'TEM-35.svg':
+                    tem > -40 ? 'TEM-40.svg':'TEM-40.svg';
+            url = 'TEMdots/' + url;
+            // console.log(url);
+            if (this.iconList[url])  return  this.iconList[url];
+            let icon =L.icon({
+                iconUrl: url,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
+            this.iconList[url] = icon;
+            return icon;
+        },
+        handleBarChartSelect(range){
+            // console.log("得到范围：",range);
+            let selectTEMRange = range.split("~");
+            let max,min;
+            // console.log(selectTEMRange);
+                if(selectTEMRange.length==2){
+                   max = parseInt(selectTEMRange[0]);
+                   min = parseInt(selectTEMRange[1]);
+                }else{
+                  selectTEMRange =  range.split("+");
+                  let exValue = parseInt(selectTEMRange[0]);
+                  if (exValue > 0) {
+                      //此处为筛选超过40度的
+                      max = 99;
+                      min = exValue;
+                  }else{
+                      //此处为筛选低于-35度的
+                      max = exValue;
+                      min = -99;
+                  }
+                }
+                // console.log("得到最大最小值：",max,min);
+                //让Map执行removeAllMarkers
+                this.removeAllMarkers();
+                //对showMarkers执行addMarkersToCiLayer操作
+                if(this.provinceSelect == '全国' && this.map.getZoom()>5)
+                    this.map.setZoom(5);
+                this.addMarkersToCiLayer(this.rangeMarkerHighLevFilter(max,min),this.showMarkers,true);
+                //不需要改变showData
+        },
+        handleBarChartCancelSelect(){
+            this.removeAllMarkers();
+            //对showMarkers执行addMarkersToCiLayer操作
+            this.addMarkersToCiLayer(undefined,this.showMarkers,true);
         }
+
     },
     components:{
-        Legend
-    
+        Legend,
     }
     
 }

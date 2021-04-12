@@ -5,10 +5,10 @@
     </div>
     <div class="left-chart">
       <div class="chart-item">
-        <Zzt/>
+        <bar-chart />
       </div>
       <div class="chart-item">
-        <Zzt/>
+        <pie-chart/>
       </div>
       <div class="chart-item">
         <Zzt/>
@@ -38,6 +38,10 @@
 <script>
 import Map from './views/Map.vue';
 import Zzt from './components/zhuzhuangtu.vue'
+import BarChart from "@/components/charts/BarChart.vue"
+import PieChart from "@/components/charts/PieChart.vue"
+// import PieChart from './components/charts/PieChart.vue';
+// import BarChart from './components/charts/BarChart.vue';
 
 export default {
   data(){
@@ -52,7 +56,11 @@ export default {
   },
   components: {
       Map,
-      Zzt
+      Zzt,
+      BarChart,
+      PieChart,
+    // PieChart
+    // BarChart
   }
 }
 </script>
@@ -64,7 +72,7 @@ export default {
 
   .left-chart{
     order: 0;
-    width:24%;
+    width:25%;
     .chart-item{
       width: 100%;
       height: 33.3%;
@@ -76,7 +84,8 @@ export default {
   }
   .right-chart{
     order: 2;
-    width:26%;
+    width:25%;
+    overflow: hidden;
     .chart-item{
       width: 100%;
       height: 33.3%;
