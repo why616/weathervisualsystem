@@ -24,6 +24,14 @@
       @change="updateMarkerAndShowDataByDate"
       >
     </el-date-picker>
+     <el-select v-model="weatherType" @change="changeShowWeather" label="温度" placeholder="请选择">
+      <el-option
+        v-for="item in weatherTyes_options"
+        :key="item.value"
+        :label="item.label"
+        :value="item.value">
+      </el-option>
+    </el-select>
   </div>
   <div class="legend">
       <Legend :range_color="legend"/>
@@ -186,7 +194,25 @@ export default {
                 {range:'-35+',color:'rgba(0,13,254,.6)'}
             ],
             _ciLayerDOM:{},
-            provinceSelecterDisable:false
+            provinceSelecterDisable:false,
+            weatherType:'TEM',
+            weatherTyes_options:[
+                {label:'温度',value:'TEM'},
+                {label:'最高温度',value:'TEM_Max'},
+                {label:'最低温度',value:'TEM_Min'},
+                {label:'相对湿度',value:'RHU'},
+                {label:'水汽压',value:'VAP'},
+                {label:'气压',value:'PRS'},
+                {label:'海平面气压',value:'PRS_Sea'},
+                {label:'最高气压',value:'PRS_Max'},
+                {label:'最低气压',value:'PRS_Min'},
+                {label:'一小时降雨量',value:'PRE_1h'},
+                {label:'体感温度',value:'tigan'},
+                {label:'风力',value:'windpower'},
+                {label:'能见度',value:'VIS'},
+                {label:'总云量',value:"CLO_Cov"},
+                {label:'现在天气',value:"WEP_Now"}
+            ]
 
         };
     },
@@ -348,6 +374,22 @@ export default {
                     //需要的服务器点天气数据从这里添加
                     s.Date = data[t].Date;
                     s.TEM = data[t].TEM;
+                    // console.log("数据匹配中：",s.province,data[t].province);
+                    // s.province = data[t].province;
+                    // console.log("数据匹配后：",s.province);
+                    s.TEM = data[t].TEM;
+                    s.TEM_Max = data[t].TEM_Max;
+                    s.TEM_Min = data[t].TEM_Min;
+                    s.RHU = data[t].RHU;
+                    s.PRS = data[t].PRS;
+                    s.VAP = data[t].VAP;
+                    s.PRE_1h = data[t].PRE_1h;
+                    s.WEP_Now = data[t].WEP_Now;
+                    s.tigan = data[t].tigan;
+                    s.windpower = data[t].windpower;
+                    s.VIS = data[t].VIS;
+                    s.CLO_Cov = data[t].CLO_Cov;
+                    s.WEP_Now = data[t].WEP_Now;
                     t++;
                 }
                 else{
@@ -506,19 +548,39 @@ export default {
                 //  tempS.push(s);
                 //  console.log("parsed:",parse);
                }
+               
                 let icon = this.getIcon(s.TEM);
                 let marker =  L.marker({lng:s.lng,lat:s.lat},{icon});
+                //这里是固定内容，但是还没写完全
                 marker.bindPopup(`
                     <p>站点：${s.stationName}</p>
                     <p>省份：${s.province}</p>
                     <p>时间：${s.Date}</p>
-                    <p>经度：${s.lng}</p>
-                    <p>纬度：${s.lat}</p>
                     <p>温度：${s.TEM}</p>
+                    <p>最高温度：${s.TEM_Max}</p>
+                    <p>最低温度：${s.TEM_Min}</p>
+                    <p>相对湿度：${s.RHU}</p>
+                    <p>水汽压：${s.VAP}</p>
+                    <p>一小时降雨量：${s.PRE_1h}</p>
+                    <p>气压：${s.PRS}</p>
                     `
                 );
+                //在这里附上值，供Filter筛选
                 marker.province = s.province;
                 marker.TEM = s.TEM;
+                marker.TEM_Max = s.TEM_Max;
+                marker.TEM_Min = s.TEM_Min;
+                marker.RHU = s.RHU;
+                marker.PRS = s.PRS;
+                marker.VAP = s.VAP;
+                marker.PRE_1h = s.PRE_1h;
+                marker.WEP_Now = s.WEP_Now;
+                marker.tigan = s.tigan;
+                marker.windpower = s.windpower;
+                marker.VIS = s.VIS;
+                marker.CLO_Cov = s.CLO_Cov;
+                marker.WEP_Now = s.WEP_Now;
+
                 return marker;
             }); 
             this.markers = markers;
@@ -910,6 +972,7 @@ export default {
             this.provinceSelect = specialName[e.target.feature.properties.name] || e.target.feature.properties.name.slice(0,-1);
             this.map.fitBounds(e.target.getBounds());
             this.provinceSelecterDisable = false;
+            this.ciLayerRemoved = false;
             this.addMarkersToCiLayer(this.provinceMarkerFilter);
             this.updateShowData(this.provinceMarkerFilter);
             this.showCiLayerFromMap();
@@ -948,27 +1011,89 @@ export default {
                 });
         },
         getIcon(tem){
+            let url  = 'TEM999999.svg';
+            switch (this.weatherType) {
+                case 'TEM_Min':
+                case 'TEM_Max':
+                case 'TEM':
+                    // console.log('获得当前选择：温度',this.weatherType);
+                    url =  
+                        tem == 999999 ? 'TEM999999.svg':
+                        tem > 40 ? 'TEM40.svg':
+                        tem > 35 ? 'TEM35.svg':
+                        tem > 30 ? 'TEM30.svg':
+                        tem > 25 ? 'TEM25.svg':
+                        tem > 20 ? 'TEM20.svg':
+                        tem > 15 ? 'TEM15.svg':
+                        tem > 10 ? 'TEM10.svg':
+                        tem > 5 ? 'TEM5.svg': 
+                        tem > 0 ? 'TEM0.svg':
+                        tem > -5 ? 'TEM-5.svg':
+                        tem > -10 ? 'TEM-10.svg':
+                        tem > -15 ? 'TEM-15.svg':
+                        tem > -20 ? 'TEM-20.svg':
+                        tem > -25 ? 'TEM-25.svg':
+                        tem > -30 ? 'TEM-30.svg':
+                        tem > -35 ? 'TEM-35.svg':
+                        tem > -40 ? 'TEM-40.svg':'TEM-40.svg';
+                    break;
+                case 'PRS':
+                case 'PRS_Sea':
+                case 'PRS_Max':
+                case 'PRS_Min':
+                    //待填入，气压
+                    // console.log('获得当前选择：气压',this.weatherType);
+                    url = 'TEM40.svg';
 
-            //假设是温度
-            let url =  
-                    tem == 999999 ? 'TEM999999.svg':
-                    tem > 40 ? 'TEM40.svg':
-                    tem > 35 ? 'TEM35.svg':
-                    tem > 30 ? 'TEM30.svg':
-                    tem > 25 ? 'TEM25.svg':
-                    tem > 20 ? 'TEM20.svg':
-                    tem > 15 ? 'TEM15.svg':
-                    tem > 10 ? 'TEM10.svg':
-                    tem > 5 ? 'TEM5.svg': 
-                    tem > 0 ? 'TEM0.svg':
-                    tem > -5 ? 'TEM-5.svg':
-                    tem > -10 ? 'TEM-10.svg':
-                    tem > -15 ? 'TEM-15.svg':
-                    tem > -20 ? 'TEM-20.svg':
-                    tem > -25 ? 'TEM-25.svg':
-                    tem > -30 ? 'TEM-30.svg':
-                    tem > -35 ? 'TEM-35.svg':
-                    tem > -40 ? 'TEM-40.svg':'TEM-40.svg';
+                    break;
+                case 'RHU':
+                    //相对湿度
+                    // console.log('获得当前选择：相对湿度',this.weatherType);
+
+                    url = 'TEM35.svg';
+                    break;
+                case 'VAP':
+                    //水汽压
+                    console.log('获得当前选择：水汽压',this.weatherType);
+
+                    url = 'TEM30.svg';
+                    break;
+                case 'PRE_1h':
+                    console.log('获得当前选择：一小时降雨',this.weatherType);
+
+                    url = 'TEM25.svg';
+                    break;
+                case 'windpower':
+                    console.log('获得当前选择：风力',this.weatherType);
+                    url = 'TEM20.svg';
+                    
+                    break;
+                case 'tigan':
+                    console.log('获得当前选择：体感温度',this.weatherType);
+                    url = 'TEM15.svg';
+                    
+                    break;
+                case 'VIS':
+                    console.log('获得当前选择：能见度',this.weatherType);
+                    url = 'TEM10.svg';
+                    
+                    break;
+                case 'CLO_Cov':
+                    console.log('获得当前选择：能见度',this.weatherType);
+                    url = 'TEM10.svg';
+                    
+                    break;
+                case 'WEP_Now':
+                    console.log('获得当前选择：能见度',this.weatherType);
+                    url = 'TEM10.svg';
+                    
+                    break;
+                default:
+                    console.log('该选择不存在！：',this.weatherType);
+
+                    break;
+            }
+            //这一行应该写在TEM的最后面，而不是这里
             url = 'TEMdots/' + url;
             // console.log(url);
             if (this.iconList[url])  return  this.iconList[url];
@@ -1014,6 +1139,14 @@ export default {
             this.removeAllMarkers();
             //对showMarkers执行addMarkersToCiLayer操作
             this.addMarkersToCiLayer(undefined,this.showMarkers,true);
+        },
+        async changeShowWeather(){
+            this.removeAllMarkers();
+            this.createMarkers(this.requestData);
+            this.addMarkersToCiLayer(this.provinceMarkerFilter);
+
+
+            
         }
 
     },
@@ -1053,7 +1186,9 @@ export default {
         z-index: 1900;
         .el-date-editor.el-input.el-input--prefix.el-input--suffix.el-date-editor--datetime{
             margin-left: 15px;
+            margin-right: 15px;
         }
+        
     }
     .map_axis_msg{
         position: absolute;

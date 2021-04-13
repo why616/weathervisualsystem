@@ -136,7 +136,7 @@ export default {
                    });
                 }
             }
-            console.log(chartData);
+            // console.log(chartData);
             return chartData
         },
         getRange(tem){
