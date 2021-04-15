@@ -24,7 +24,7 @@
       @change="updateMarkerAndShowDataByDate"
       >
     </el-date-picker>
-     <el-select v-model="weatherType" @change="changeShowWeather" label="温度" placeholder="请选择">
+     <el-select v-model="weatherType" @change="changeShowWeatherType" label="温度" placeholder="请选择">
       <el-option
         v-for="item in weatherTyes_options"
         :key="item.value"
@@ -53,7 +53,11 @@ import HeatmapOverlay from "leaflet-heatmap"
 import Legend from "@/components/Legend.vue"
 // import Legend from '../components/legend.vue';
 export default {
+    created(){
+        this.createNewWeatherTypeData();
+    },
     mounted(){
+        
         this.fullscreenLoading = true; 
         //设置chart传递的事件的监听
         this.$bus.$on('bar-chart-select',this.handleBarChartSelect);
@@ -118,7 +122,7 @@ export default {
         }
         
         
-        this.map.on('zoom',this.onZoomLevChange);
+        this.map.on('zoomend',this.onZoomLevChange);
         this.map.on('move',this.onMoveStart);
         //  L.Icon.Default.prototype.options.iconUrl="marker-icon.png";
         //  L.Icon.Default.prototype.options.shadowUrl="https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png";
@@ -212,7 +216,8 @@ export default {
                 {label:'能见度',value:'VIS'},
                 {label:'总云量',value:"CLO_Cov"},
                 {label:'现在天气',value:"WEP_Now"}
-            ]
+            ],
+            preZoomRange:7
 
         };
     },
@@ -377,7 +382,7 @@ export default {
                     // console.log("数据匹配中：",s.province,data[t].province);
                     // s.province = data[t].province;
                     // console.log("数据匹配后：",s.province);
-                    s.TEM = data[t].TEM;
+                    // s.TEM = data[t].TEM;
                     s.TEM_Max = data[t].TEM_Max;
                     s.TEM_Min = data[t].TEM_Min;
                     s.RHU = data[t].RHU;
@@ -390,6 +395,10 @@ export default {
                     s.VIS = data[t].VIS;
                     s.CLO_Cov = data[t].CLO_Cov;
                     s.WEP_Now = data[t].WEP_Now;
+                    s.PRS_Sea = data[t].PRS_Sea;
+                    s.PRS_Max = data[t].PRS_Max;
+                    s.PRS_Min = data[t].PRS_Min;
+
                     t++;
                 }
                 else{
@@ -406,7 +415,24 @@ export default {
                     //     tempT++;
                     // }
                     }
+                    s.RHU = 999999;
+                    // s.TEM = 999999;
+                    s.TEM_Max = 999999;
+                    s.TEM_Min = 999999;
+                    // s.RHU = 999999;
+                    s.PRS = 999999;
+                    s.VAP = 999999;
+                    s.PRE_1h = 999999;
+                    s.WEP_Now = 999999;
+                    s.tigan = 999999;
+                    s.windpower = 999999;
+                    s.VIS = 999999;
+                    s.CLO_Cov = 999999;
+                    s.WEP_Now = 999999;
                     s.TEM = 999999;
+                    s.PRS_Sea = 999999;
+                    s.PRS_Max = 999999;
+                    s.PRS_Min = 999999;
                     s.Date = '该数据缺测';
                     lostDataStationsErrMsg.push(`<p>在${s.stationName}的数据缺失</p>`)
                     // console.log(`ERR：在${t},${s.stationId},${s.stationName}的数据缺失`);
@@ -484,11 +510,13 @@ export default {
         rangeMarkerHighLevFilter(max,min){
             return (marker)=>{
                 // console.log("该marker的TEM:",marker.TEM,"最大最小值:",max,min);
-                if (marker.TEM <= max && marker.TEM > min)  return marker;
+                if (marker[this.weatherType] < max && marker[this.weatherType] >= min)  return marker;
             }
         },
         onZoomLevChange(e){
             this.currentZoomLev = Math.round(this.map.getZoom());
+            // console.log(this.currentZoomLev);
+            // this.handleIconSizeByZoomLev(this.currentZoomLev);
             //有了筛选功能后，地图zoom过小不需要自动隐藏ciLayer
             // if(this.provinceSelect =='全国')
             // if(this.currentZoomLev <= 5 && !this.ciLayerRemoved){
@@ -549,7 +577,7 @@ export default {
                 //  console.log("parsed:",parse);
                }
                
-                let icon = this.getIcon(s.TEM);
+                let icon = this.getIcon(s[this.weatherType]);
                 let marker =  L.marker({lng:s.lng,lat:s.lat},{icon});
                 //这里是固定内容，但是还没写完全
                 marker.bindPopup(`
@@ -563,6 +591,7 @@ export default {
                     <p>水汽压：${s.VAP}</p>
                     <p>一小时降雨量：${s.PRE_1h}</p>
                     <p>气压：${s.PRS}</p>
+                    <p>体感温度：${s.tigan}</p>
                     `
                 );
                 //在这里附上值，供Filter筛选
@@ -580,6 +609,9 @@ export default {
                 marker.VIS = s.VIS;
                 marker.CLO_Cov = s.CLO_Cov;
                 marker.WEP_Now = s.WEP_Now;
+                marker.PRS_Sea = s.PRS_Sea;
+                marker.PRS_Max = s.PRS_Max;
+                marker.PRS_Min = s.PRS_Min;
 
                 return marker;
             }); 
@@ -600,7 +632,7 @@ export default {
                 this.createMarkers(data);
                 //    this.updateMarkerAndShowDataByProvice();
                 this.clearGeoJsonLayer();
-                this.updateGeoJson();
+                this.updateGeoJson(this.weatherType);
                 this.addChinaGeoJson();
                 if(!this.ciLayerRemoved)
                     this.addMarkersToCiLayer(this.provinceMarkerFilter);
@@ -823,7 +855,7 @@ export default {
             })
             let res =  Promise.all(promises);
             // console.log(res);
-            let {data} = await this.$axios.get(`https://geo.datav.aliyun.com/areas_v2/bound/100000_full.json`);
+            let {data} = await this.$axios.get(/*`https://geo.datav.aliyun.com/areas_v2/bound/100000_full.json`*/`http://localhost:8080/geojson/100000.json`);
             this.chinaGeoJson = data;
             return res;
             {/*
@@ -857,25 +889,96 @@ export default {
             };
             L.geoJSON(this.chinaGeoJson,{style:myStyle,onEachFeature:this.onEachFeature}).addTo(this.geoJsonLayerGroup);
         },
-        getColor(tem){
-            return  tem == 999999 ? 'rgba(0,0,0,1)':
-                    tem > 40 ? 'rgba(225,84,86,1)':
-                    tem > 35 ? 'rgba(254,1,1,1)':
-                    tem > 30 ? 'rgba(254,97,1,1)':
-                    tem > 25 ? 'rgba(254,129,1,1)':
-                    tem > 20 ? 'rgba(254,194,1,1)':
-                    tem > 15 ? 'rgba(254,254,1,1)':
-                    tem > 10 ? 'rgba(221,254,1,1)':
-                    tem > 5 ? 'rgba(147,254,1,1)':
-                    tem > 0 ? 'rgba(17,254,1,1)':
-                    tem > -5 ? 'rgba(0,254,180,1)':
-                    tem > -10 ? 'rgba(0,254,246,1)':
-                    tem > -15 ? 'rgba(0,234,254,1)':
-                    tem > -20 ? 'rgba(0,234,254,1)':
-                    tem > -25 ? 'rgba(0,165,254,1)':
-                    tem > -30 ? 'rgba(0,100,254,1)':
-                    tem > -35 ? 'rgba(0,13,254,1)':
-                    tem > -40 ? 'rgba(0,13,254,1)':'rgba(0,13,254,1)'
+        getColor(value){
+            let color = 'rgba(0,0,0,1)';
+            switch (this.weatherType) {
+                case 'TEM':
+                case 'TEM_Max':
+                case 'TEM_Min':
+                 case 'tigan':
+                   color =  value == 999999 ? 'rgba(0,0,0,1)':
+                            value >= 40 ? 'rgba(225,84,86,1)':
+                            value >= 35 ? 'rgba(254,1,1,1)':
+                            value >= 30 ? 'rgba(254,97,1,1)':
+                            value >= 25 ? 'rgba(254,129,1,1)':
+                            value >= 20 ? 'rgba(254,194,1,1)':
+                            value >= 15 ? 'rgba(254,254,1,1)':
+                            value >= 10 ? 'rgba(221,254,1,1)':
+                            value >= 5 ? 'rgba(147,254,1,1)':
+                            value >= 0 ? 'rgba(17,254,1,1)':
+                            value >= -5 ? 'rgba(0,254,180,1)':
+                            value >= -10 ? 'rgba(0,254,246,1)':
+                            value >= -15 ? 'rgba(0,234,254,1)':
+                            value >= -20 ? 'rgba(0,234,254,1)':
+                            value >= -25 ? 'rgba(0,165,254,1)':
+                            value >= -30 ? 'rgba(0,100,254,1)':
+                            value >= -35 ? 'rgba(0,13,254,1)':
+                            value >= -40 ? 'rgba(0,13,254,1)':'rgba(0,13,254,1)'
+                    break;
+                case 'RHU':
+                    color = value == 999999 ? 'rgba(0,0,0,1)':
+                            value >= 100 ? 'rgba(8,0,0,1)':
+                            value >= 90 ? 'rgba(51,13,128,1)':
+                            value >= 80 ? 'rgba(70,33,164,1)':
+                            value >= 70 ? 'rgba(84,64,182,1)':
+                            value >= 60 ? 'rgba(67,73,201,1)':
+                            value >= 50 ? 'rgba(238,253,202,1)':
+                            value >= 40 ? 'rgba(249,250,213,1)':
+                            value >= 30 ? 'rgba(247,79,20,1)':
+                            value >= 20 ? 'rgba(252,38,3,1)':
+                            value >= 10 ? 'rgba(231,0,0,1)':
+                            value >= 0 ? 'rgba(213,6,55,1)':'rgba(213,6,55,1)'
+                    break;
+                case 'PRE_1h':
+                    color = value == 999999 ? 'rgba(0,0,0,1)':
+                            value >= 50 ? 'rgba(141,45,105,1)':
+                            value >= 20 ? 'rgba(217,106,55,1)':
+                            value >= 10 ? 'rgba(237,45,251,1)':
+                            value >= 8 ? 'rgba(41,137,112,1)':
+                            value >= 6 ? 'rgba(41,45,231,1)':
+                            value >= 4 ? 'rgba(117,189,255,1)':
+                            value >= 2 ? 'rgba(89,191,103,1)':
+                            value >= 1 ? 'rgba(171,235,167,1)':
+                            value >= 0.01 ? 'rgba(203,244,202,1)':
+                            value >= 0 ? 'rgba(245,245,245,1)':'rgba(245,245,245,1)'
+                    break;
+                case 'PRS':
+                case 'PRS_Sea':
+                case 'PRS_Max':
+                case 'PRS_Min':
+                    color = value == 999999 ? 'rgba(0,0,0,1)':
+                            value >= 1030 ? 'rgba(0,18,218,1)':
+                            value >= 1020 ? 'rgba(0,117,255,1)':
+                            value >= 1010 ? 'rgba(87,216,253,1)':
+                            value >= 1000 ? 'rgba(9,234,203,1)':
+                            value >= 990 ? 'rgba(14,211,119,1)':
+                            value >= 980 ? 'rgba(10,179,21,1)':
+                            value >= 970 ? 'rgba(132,217,142,1)':
+                            value >= 920 ? 'rgba(189,244,9,1)':
+                            value >= 870 ? 'rgba(244,244,15,1)':
+                            value >= 820 ? 'rgba(255,218,8,1)':
+                            value >= 770 ? 'rgba(252,179,8,1)':
+                            value >= 720 ? 'rgba(250,135,3,1)':
+                            value >= 670 ? 'rgba(255,71,0,1)':
+                            value >= 620 ? 'rgba(251,8,1,1)':
+                            value >= 570 ? 'rgba(190,4,51,1)':
+                            value >= 520 ? 'rgba(124,3,108,1)':'rgba(124,3,108,1)'
+                    break;
+                case 'windpower':
+                    color = value == 999999 ? 'rgba(0,0,0,1)':
+                            value >= 7 ? 'rgba(4,54,250,1)':
+                            value >= 6 ? 'rgba(2,209,251,1)':
+                            value >= 5 ? 'rgba(0,237,196,1)':
+                            value >= 4 ? 'rgba(26,187,11,1)':
+                            value >= 3 ? 'rgba(123,215,8,1)':
+                            value >= 2 ? 'rgba(254,190,1,1)':
+                            value >= 1 ? 'rgba(255,39,2,1)':
+                            value >= 0 ? 'rgba(88,0,135,1)':'rgba(88,0,135,1)'
+                    break;
+                default:
+                    break;
+            }
+            return color
         },
         requestDataMappingGeoJsonDataByStationName(){
             let mappingData = {};
@@ -899,7 +1002,7 @@ export default {
                             opacity: 1,
                             color: 'white',
                             dashArray: '5',
-                            fillOpacity: .5,
+                            fillOpacity: .6,
                             // rgb(254, 178, 76)
                             //默认是0.2，不重新设置color会很淡     
                             fillColor: this.getColor(feature.properties.value)
@@ -1010,32 +1113,35 @@ export default {
 
                 });
         },
-        getIcon(tem){
+        getIcon(value){
             let url  = 'TEM999999.svg';
             switch (this.weatherType) {
+                case 'tigan':
                 case 'TEM_Min':
                 case 'TEM_Max':
                 case 'TEM':
                     // console.log('获得当前选择：温度',this.weatherType);
                     url =  
-                        tem == 999999 ? 'TEM999999.svg':
-                        tem > 40 ? 'TEM40.svg':
-                        tem > 35 ? 'TEM35.svg':
-                        tem > 30 ? 'TEM30.svg':
-                        tem > 25 ? 'TEM25.svg':
-                        tem > 20 ? 'TEM20.svg':
-                        tem > 15 ? 'TEM15.svg':
-                        tem > 10 ? 'TEM10.svg':
-                        tem > 5 ? 'TEM5.svg': 
-                        tem > 0 ? 'TEM0.svg':
-                        tem > -5 ? 'TEM-5.svg':
-                        tem > -10 ? 'TEM-10.svg':
-                        tem > -15 ? 'TEM-15.svg':
-                        tem > -20 ? 'TEM-20.svg':
-                        tem > -25 ? 'TEM-25.svg':
-                        tem > -30 ? 'TEM-30.svg':
-                        tem > -35 ? 'TEM-35.svg':
-                        tem > -40 ? 'TEM-40.svg':'TEM-40.svg';
+                        value == 999999 ? 'TEM999999.svg':
+                        value >= 40 ? 'TEM40.svg':
+                        value >= 35 ? 'TEM35.svg':
+                        value >= 30 ? 'TEM30.svg':
+                        value >= 25 ? 'TEM25.svg':
+                        value >= 20 ? 'TEM20.svg':
+                        value >= 15 ? 'TEM15.svg':
+                        value >= 10 ? 'TEM10.svg':
+                        value >= 5 ? 'TEM5.svg': 
+                        value >= 0 ? 'TEM0.svg':
+                        value >= -5 ? 'TEM-5.svg':
+                        value >= -10 ? 'TEM-10.svg':
+                        value >= -15 ? 'TEM-15.svg':
+                        value >= -20 ? 'TEM-20.svg':
+                        value >= -25 ? 'TEM-25.svg':
+                        value >= -30 ? 'TEM-30.svg':
+                        value >= -35 ? 'TEM-35.svg':
+                        value >= -40 ? 'TEM-40.svg':'TEM-40.svg';
+                    url = 'TEMdots/' + url;
+
                     break;
                 case 'PRS':
                 case 'PRS_Sea':
@@ -1043,29 +1149,80 @@ export default {
                 case 'PRS_Min':
                     //待填入，气压
                     // console.log('获得当前选择：气压',this.weatherType);
-                    url = 'TEM40.svg';
+                    url = 
+                        value == 999999 ? 'PRS999999.svg':
+                        value >= 1030 ? 'PRS1030.svg':
+                        value >= 1020 ? 'PRS1020.svg':
+                        value >= 1010 ? 'PRS1010.svg':
+                        value >= 1000 ? 'PRS1000.svg':
+                        value >= 990 ? 'PRS990.svg':
+                        value >= 980 ? 'PRS980.svg':
+                        value >= 970 ? 'PRS970.svg':
+                        value >= 920 ? 'PRS920.svg':
+                        value >= 870 ? 'PRS870.svg':
+                        value >= 820 ? 'PRS820.svg':
+                        value >= 770 ? 'PRS770.svg':
+                        value >= 720 ? 'PRS720.svg':
+                        value >= 670 ? 'PRS670.svg':
+                        value >= 620 ? 'PRS620.svg':
+                        value >= 570 ? 'PRS570.svg':
+                        value >= 520 ? 'PRS520.svg':'PRS520.svg'
+                    url = 'PRSdots/' + url;
 
                     break;
                 case 'RHU':
                     //相对湿度
                     // console.log('获得当前选择：相对湿度',this.weatherType);
-
-                    url = 'TEM35.svg';
+                    url = 
+                        value == 999999 ? 'RHU999999.svg':
+                        value >= 100 ? 'RHU100.svg':
+                        value >= 90 ? 'RHU90.svg':
+                        value >= 80 ? 'RHU80.svg':
+                        value >= 70 ? 'RHU70.svg':
+                        value >= 60 ? 'RHU60.svg':
+                        value >= 50 ? 'RHU50.svg':
+                        value >= 40 ? 'RHU40.svg':
+                        value >= 30 ? 'RHU30.svg':
+                        value >= 20 ? 'RHU20.svg':
+                        value >= 10 ? 'RHU10.svg':
+                        value >= 0 ? 'RHU0.svg':'RHU0.svg'
+                    url = 'RHUdots/' + url;
                     break;
                 case 'VAP':
                     //水汽压
                     console.log('获得当前选择：水汽压',this.weatherType);
 
-                    url = 'TEM30.svg';
+                   
+
                     break;
                 case 'PRE_1h':
-                    console.log('获得当前选择：一小时降雨',this.weatherType);
-
-                    url = 'TEM25.svg';
+                    // console.log('获得当前选择：一小时降雨',this.weatherType);
+                    url = 
+                        value == 999999 ? 'PRE_1h999999.svg':
+                        value == 50 ? 'PRE_1h50.svg':
+                        value >= 20 ? 'PRE_1h20.svg':
+                        value >= 10 ? 'PRE_1h10.svg':
+                        value >= 8 ? 'PRE_1h8.svg':
+                        value >= 6 ? 'PRE_1h6.svg':
+                        value >= 4 ? 'PRE_1h4.svg':
+                        value >= 2 ? 'PRE_1h2.svg':
+                        value >= 1 ? 'PRE_1h1.svg':
+                        value >= 0.01 ? 'PRE_1h0.01.svg':
+                        value >= 0 ? 'PRE_1h0.svg':'PRE_1h0.svg'
+                    url = 'PRE_1hdots/' + url;
                     break;
                 case 'windpower':
                     console.log('获得当前选择：风力',this.weatherType);
-                    url = 'TEM20.svg';
+                    url = value == 999999 ? 'windpower999999.svg':
+                            value >= 7 ? 'windpower7.svg':
+                            value >= 6 ? 'windpower6.svg':
+                            value >= 5 ? 'windpower5.svg':
+                            value >= 4 ? 'windpower4.svg':
+                            value >= 3 ? 'windpower3.svg':
+                            value >= 2 ? 'windpower2.svg':
+                            value >= 1 ? 'windpower1.svg':
+                            value >= 0 ? 'windpower0.svg':'windpower0.svg'
+                    url = 'windpowerdots/' + url;
                     
                     break;
                 case 'tigan':
@@ -1093,16 +1250,16 @@ export default {
 
                     break;
             }
-            //这一行应该写在TEM的最后面，而不是这里
-            url = 'TEMdots/' + url;
             // console.log(url);
-            if (this.iconList[url])  return  this.iconList[url];
-            let icon =L.icon({
-                iconUrl: url,
-                iconSize: [20, 20],
-                iconAnchor: [10, 10]
-            });
-            this.iconList[url] = icon;
+            // let currZoom = this.map.getZoom();
+            let icon = undefined;
+                if (this.iconList[url])  return  this.iconList[url];
+                    icon =L.icon({
+                    iconUrl: url,
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                });
+                this.iconList[url] = icon;
             return icon;
         },
         handleBarChartSelect(range){
@@ -1111,19 +1268,23 @@ export default {
             let max,min;
             // console.log(selectTEMRange);
                 if(selectTEMRange.length==2){
-                   max = parseInt(selectTEMRange[0]);
-                   min = parseInt(selectTEMRange[1]);
+                   max = parseFloat(selectTEMRange[0]);
+                   min = parseFloat(selectTEMRange[1]);
                 }else{
                   selectTEMRange =  range.split("+");
-                  let exValue = parseInt(selectTEMRange[0]);
-                  if (exValue > 0) {
-                      //此处为筛选超过40度的
-                      max = 99;
+                  let exValue = parseFloat(selectTEMRange[0]);
+                  if(exValue == 999999){
+                      max = 1000000;
+                      min = 999999
+                  }
+                  else if (exValue > 0) {
+                      //此处为筛选超过最大值的
+                      max = 999999;
                       min = exValue;
                   }else{
-                      //此处为筛选低于-35度的
-                      max = exValue;
-                      min = -99;
+                      //此处为筛选低于最小值的
+                      max = exValue+0.000000001;
+                      min = -999999;
                   }
                 }
                 // console.log("得到最大最小值：",max,min);
@@ -1131,7 +1292,7 @@ export default {
                 this.removeAllMarkers();
                 //对showMarkers执行addMarkersToCiLayer操作
                 if(this.provinceSelect == '全国' && this.map.getZoom()>5)
-                    this.map.setZoom(5);
+                    this.map.setZoom(6);
                 this.addMarkersToCiLayer(this.rangeMarkerHighLevFilter(max,min),this.showMarkers,true);
                 //不需要改变showData
         },
@@ -1140,19 +1301,244 @@ export default {
             //对showMarkers执行addMarkersToCiLayer操作
             this.addMarkersToCiLayer(undefined,this.showMarkers,true);
         },
-        async changeShowWeather(){
+        async changeShowWeatherType(){
             this.removeAllMarkers();
             this.createMarkers(this.requestData);
             this.addMarkersToCiLayer(this.provinceMarkerFilter);
-
-
+            this.updateLegend();
+            this.clearGeoJsonLayer();
+            this.updateGeoJson(this.weatherType);
+            this.addChinaGeoJson();
+            this.$store.commit('updateWeatherType',this.weatherType);
             
-        }
+        },
+        updateLegend(){
+            let legendMap = {
+                'TEM':[
+                    {range:'40+',color:'rgba(225,84,86,.6)'},
+                    {range:'40~35',color:'rgba(254,1,1,.6)'},
+                    {range:'35~30',color:'rgba(254,97,1,.6)'},
+                    {range:'30~25',color:'rgba(254,129,1,.6)'},
+                    {range:'25~20',color:'rgba(254,194,1,.6)'},
+                    {range:'20~15',color:'rgba(254,254,1,.6)'},
+                    {range:'15~10',color:'rgba(221,254,1,.6)'},
+                    {range:'10~5',color:'rgba(147,254,1,.6)'},
+                    {range:'5~0',color:'rgba(17,254,1,.6)'},
+                    {range:'0~-5',color:'rgba(0,254,180,.6)'},
+                    {range:'-5~-10',color:'rgba(0,254,246,.6)'},
+                    {range:'-10~-15',color:'rgba(0,234,254,.6)'},
+                    {range:'-15~-20',color:'rgba(0,203,255,.6)'},
+                    {range:'-20~-25',color:'rgba(0,165,254,.6)'},
+                    {range:'-25~-30',color:'rgba(0,100,254,.6)'},
+                    {range:'-30~-35',color:'rgba(0,70,254,.6)'},
+                    {range:'-35+',color:'rgba(0,13,254,.6)'}
+                ],
+                'tigan':[
+                    {range:'40+',color:'rgba(225,84,86,.6)'},
+                    {range:'40~35',color:'rgba(254,1,1,.6)'},
+                    {range:'35~30',color:'rgba(254,97,1,.6)'},
+                    {range:'30~25',color:'rgba(254,129,1,.6)'},
+                    {range:'25~20',color:'rgba(254,194,1,.6)'},
+                    {range:'20~15',color:'rgba(254,254,1,.6)'},
+                    {range:'15~10',color:'rgba(221,254,1,.6)'},
+                    {range:'10~5',color:'rgba(147,254,1,.6)'},
+                    {range:'5~0',color:'rgba(17,254,1,.6)'},
+                    {range:'0~-5',color:'rgba(0,254,180,.6)'},
+                    {range:'-5~-10',color:'rgba(0,254,246,.6)'},
+                    {range:'-10~-15',color:'rgba(0,234,254,.6)'},
+                    {range:'-15~-20',color:'rgba(0,203,255,.6)'},
+                    {range:'-20~-25',color:'rgba(0,165,254,.6)'},
+                    {range:'-25~-30',color:'rgba(0,100,254,.6)'},
+                    {range:'-30~-35',color:'rgba(0,70,254,.6)'},
+                    {range:'-35+',color:'rgba(0,13,254,.6)'}
+                ],
+                'RHU':[
+                    {range:'100',color: 'rgba(8,0,0,1)'},
+                    {range:'100~90',color: 'rgba(51,13,128,1)'},
+                    {range:'90~80',color: 'rgba(70,33,164,1)'},
+                    {range:'80~70',color:  'rgba(84,64,182,1)'},
+                    {range:'70~60',color: 'rgba(67,73,201,1)'},
+                    {range:'60~50',color: 'rgba(238,253,202,1)'},
+                    {range:'50~40',color: 'rgba(249,250,213,1)'},
+                    {range:'40~30',color: 'rgba(247,79,20,1)'},
+                    {range:'30~20',color: 'rgba(252,38,3,1)'},
+                    {range:'20~10',color: 'rgba(231,0,0,1)'},
+                    {range:'10~0',color: 'rgba(213,6,55,1)'}
+                ],
+                'PRE_1h':[
+                    {range:'50',color:'rgba(141,45,105,1)'},
+                    {range:'50~20',color:'rgba(217,106,55,1)'},
+                    {range:'20~10',color:'rgba(237,45,251,1)'},
+                    {range:'10~8',color:'rgba(41,137,112,1)'},
+                    {range:'8~6',color:'rgba(41,45,231,1)'},
+                    {range:'6~4',color:'rgba(117,189,255,1)'},
+                    {range:'4~2',color:'rgba(89,191,103,1)'},
+                    {range:'2~1',color:'rgba(171,235,167,1)'},
+                    {range:'1~0.01',color:'rgba(203,244,202,1)'},
+                    {range:'0',color:'rgba(245,245,245,1)'}
+                ],
+                'PRS':[
+                    {range:'1030',color:'rgba(0,18,218,1)'},
+                    {range:'1030~1020',color:'rgba(0,117,255,1)'},
+                    {range:'1020~1010',color:'rgba(87,216,253,1)'},
+                    {range:'1010~1000',color:'rgba(9,234,203,1)'},
+                    {range:'1000~990',color:'rgba(14,211,119,1)'},
+                    {range:'990~980',color:'rgba(10,179,21,1)'},
+                    {range:'980~970',color:'rgba(132,217,142,1)'},
+                    {range:'970~920',color:'rgba(189,244,9,1)'},
+                    {range:'920~870',color:'rgba(244,244,15,1)'},
+                    {range:'870~820',color:'rgba(255,218,8,1)'},
+                    {range:'820~770',color:'rgba(252,179,8,1)'},
+                    {range:'770~720',color:'rgba(250,135,3,1)'},
+                    {range:'720~670',color:'rgba(255,71,0,1)'},
+                    {range:'670~620',color:'rgba(251,8,1,1)'},
+                    {range:'620~570',color:'rgba(190,4,51,1)'},
+                    {range:'520',color:'rgba(124,3,108,1)'}
+                ],
+                'windpower':[
+                    {range:'7',color:'rgba(4,54,250,1)'},
+                    {range:'7~6',color:'rgba(2,209,251,1)'},
+                    {range:'6~5',color:'rgba(0,237,196,1)'},
+                    {range:'5~4',color:'rgba(26,187,11,1)'},
+                    {range:'4~3',color:'rgba(123,215,8,1)'},
+                    {range:'3~2',color:'rgba(254,190,1,1)'},
+                    {range:'2~1',color:'rgba(255,39,2,1)'},
+                    {range:'0',color:'rgba(88,0,135,1)'}
+                ]
+            }
+            legendMap['TEM_Max'] = legendMap['TEM_Min'] = legendMap['TEM'];
+            legendMap['PRS_Max'] = legendMap['PRS_Min'] = legendMap["PRS_Sea"] = legendMap['PRS'];
+            
+            
+            this.legend = legendMap[this.weatherType];
+        },
+        createNewWeatherTypeData(){
+            let context = [
+                // {value:999999,color:'rgba(0,0,0,1)',icon:'PRE_1h'},
+                // {value:50,color:'rgba(141,45,105,1)',icon:'PRE_1h'},
+                // {value:20,color:'rgba(217,106,55,1)',icon:'PRE_1h'},
+                // {value:10,color:'rgba(237,45,251,1)',icon:'PRE_1h'},
+                // {value:8,color:'rgba(41,137,112,1)',icon:'PRE_1h'},
+                // {value:6,color:'rgba(41,45,231,1)',icon:'PRE_1h'},
+                // {value:4,color:'rgba(117,189,255,1)',icon:'PRE_1h'},
+                // {value:2,color:'rgba(89,191,103,1)',icon:'PRE_1h'},
+                // {value:1,color:'rgba(171,235,167,1)',icon:'PRE_1h'},
+                // {value:0.01,color:'rgba(203,244,202,1)',icon:'PRE_1h'},
+                // {value:0,color:'rgba(255,255,255,0)',icon:'PRE_1h'}
+                // {value:999999,color:'rgba(0,0,0,1)',icon:'PRS'},
+                // {value:1030,color:'rgba(0,18,218,1)',icon:'PRS'},
+                // {value:1020,color:'rgba(0,117,255,1)',icon:'PRS'},
+                // {value:1010,color:'rgba(87,216,253,1)',icon:'PRS'},
+                // {value:1000,color:'rgba(9,234,203,1)',icon:'PRS'},
+                // {value:990,color:'rgba(14,211,119,1)',icon:'PRS'},
+                // {value:980,color:'rgba(10,179,21,1)',icon:'PRS'},
+                // {value:970,color:'rgba(132,217,142,1)',icon:'PRS'},
+                // {value:920,color:'rgba(189,244,9,1)',icon:'PRS'},
+                // {value:870,color:'rgba(244,244,15,1)',icon:'PRS'},
+                // {value:820,color:'rgba(255,218,8,1)',icon:'PRS'},
+                // {value:770,color:'rgba(252,179,8,1)',icon:'PRS'},
+                // {value:720,color:'rgba(250,135,3,1)',icon:'PRS'},
+                // {value:670,color:'rgba(255,71,0,1)',icon:'PRS'},
+                // {value:620,color:'rgba(251,8,1,1)',icon:'PRS'},
+                // {value:570,color:'rgba(190,4,51,1)',icon:'PRS'},
+                // {value:520,color:'rgba(124,3,108,1)',icon:'PRS'},
+                
+                {value:999999,color:'rgba(0,0,0,1)',icon:'windpower'},
+                {value:7,color:'rgba4,54,250,1)',icon:'windpower'},
+                {value:6,color:'rgba(2,209,251,1)',icon:'windpower'},
+                {value:5,color:'rgba(0,237,196,1)',icon:'windpower'},
+                {value:4,color:'rgba(26,187,11,1)',icon:'windpower'},
+                {value:3,color:'rgba(123,215,8,1)',icon:'windpower'},
+                {value:2,color:'rgba(254,190,1,1)',icon:'windpower'},
+                {value:1,color:'rgba(255,39,2,1)',icon:'windpower'},
+                {value:0,color:'rgba(88,0,135,1)',icon:'windpower'},
+                
 
+
+            ];
+            let getColor = '';
+            let getIcon = '';
+            let legend = '';
+            let xAxisData = '';
+            let rangeMap = '';
+            let getRange = '';
+            context.forEach((item,index,arr)=>{
+                if(index == 0){
+                    item.range = item.value;
+                    getColor += `value == ${item.value} ? '${item.color}':\n`;
+                    getIcon += `value == ${item.value} ? '${item.icon}${item.value}.svg':\n`;
+                    legend += ``
+                    xAxisData += `'${item.range}',\n`
+                    rangeMap += `'${item.range}':0,\n`
+                    getRange += `value == ${item.value} ? '${item.range}' :\n`
+                }else if( index == 1){
+                    item.range = item.value;
+                    getColor += `value >= ${item.value} ? '${item.color}':\n`;
+                    getIcon += `value >= ${item.value} ? '${item.icon}${item.value}.svg':\n`;
+                    legend += `{range:'${item.range}',color:'${item.color}'},\n`
+                    xAxisData += `'${item.range}',\n`
+                    rangeMap += `'${item.range}':0,\n`
+                    getRange += `value >= ${item.value} ? '${item.range}' :\n`
+                }else if (index != context.length-1) {
+                    item.range = `${arr[index-1].value}~${item.value}`;
+                    getColor += `value >= ${item.value} ? '${item.color}':\n`;
+                    getIcon += `value >= ${item.value} ? '${item.icon}${item.value}.svg':\n`;
+                    legend += `{range:'${item.range}',color:'${item.color}'},\n`
+                    xAxisData += `'${item.range}',\n`
+                    rangeMap += `'${item.range}':0,\n`
+                    getRange += `value >= ${item.value} ? '${item.range}' :\n`
+                }else{
+                    item.range = item.value;
+                    getColor += `value >= ${item.value} ? '${item.color}':'${item.color}'`;
+                    getIcon += `value >= ${item.value} ? '${item.icon}${item.value}.svg':'${item.icon}${item.value}.svg'`;
+                    legend += `{range:'${item.range}',color:'${item.color}'}`
+                    xAxisData += `'${item.range}'`
+                    rangeMap += `'${item.range}':0`
+                    getRange += `value >= ${item.value} ? '${item.range}' : '${item.range}'`
+                }
+            })
+            console.log({
+                getColor,
+                getIcon,
+                legend,
+                xAxisData,
+                rangeMap,
+                getRange
+            });
+            // return 
+        },
+        // handleIconSizeByZoomLev(currZoomLev){
+        //     if(this.preZoomRange == 7){
+        //         if(currZoomLev <7){
+        //             // this.removeAllMarkers();
+        //             // this.createMarkers(this.requestData);
+        //             this.changeAllMarkersIcon();
+        //             this.ciLayer.redraw();
+        //             // this.addMarkersToCiLayer(undefined,this.showMarkers,true);
+        //             this.preZoomRange = 6;
+        //         }
+        //     }
+        //     else{
+        //         if(currZoomLev > 6){
+        //             this.changeAllMarkersIcon();
+        //             this.ciLayer.redraw();
+
+        //             this.preZoomRange = 7;
+        //         }
+        //     }
+        // },
+        // changeAllMarkersIcon(){
+        //     let newIcon;
+        //     this.markers.forEach(marker=>{
+        //         newIcon = this.getIcon(marker[this.weatherType]);
+        //         marker.setIcon(newIcon);
+        //     })
+        // }
     },
     components:{
         Legend,
-    }
+    },
+    
     
 }
 </script>

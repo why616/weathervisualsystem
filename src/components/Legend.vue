@@ -1,7 +1,7 @@
 <template>
   <div class="legend-area">
     <div class="legend">
-        <div v-for="i in rangeColor" :key="i.range">
+        <div v-for="i in range_color" :key="i.range">
             <i :style="{background:i.color}"></i><span>{{i.range}}</span>
         </div>
     </div>
@@ -13,7 +13,7 @@ export default {
     props:['range_color'],
     data(){
         return{
-            rangeColor: this.range_color
+            // rangeColor: this.range_color
         }
     }
 };

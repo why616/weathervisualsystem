@@ -7,7 +7,7 @@
 </template>
 
 <script>
-import { format } from 'url';
+// import { format } from 'url';
 import { mapState } from 'vuex'
 export default {
     mounted(){
@@ -17,7 +17,10 @@ export default {
     data(){
         return {
             echart:undefined,
-            selectRange:''
+            selectRange:'',
+            unit:'℃',
+            zhongwen:'温度'
+
             // k:0
         }
     },
@@ -38,9 +41,10 @@ export default {
             
         },
         renderChart(data){
+            
             let TEMoption = {
                 title:{
-                    text:"地图点-温度-比例分布"
+                    text:`地图点-${this.zhongwen}-比例分布`
                 },
                 
                 tooltip: {
@@ -66,7 +70,7 @@ export default {
                         label: {
                             show: false,
                             position: 'center',
-                            formatter:'{b}℃: {d}%'
+                            formatter:`{b}${this.unit}: {d}%`
                         },
                         
                         // labelLine:{
@@ -95,104 +99,361 @@ export default {
             };
             this.echart.setOption(TEMoption);
         },
-        dealTEMDataToEchartData(weatherData){
-            let chartData = [];
-            // let totalCounts = 0;
+        dealWeatherDataToEchartData(weatherData){
+             let chartData = [];
             let rangeMap = {
-                '999999':0,
-                '40+':0 ,
-                '40~35':0 ,
-                '35~30':0 ,
-                '30~25':0 ,
-                '25~20':0 ,
-                '20~15':0 ,
-                '15~10':0 ,
-                '10~5':0 ,
-                '5~0':0 ,
-                '0~-5':0 ,
-                '-5~-10':0 ,
-                '-10~-15':0 ,
-                '-15~-20':0 ,
-                '-20~-25':0 ,
-                '-25~-30':0 ,
-                '-30~-35':0 ,
-                '-35+':0
+                'TEM':{
+                    '999999':0,
+                    '40+':0 ,
+                    '40~35':0 ,
+                    '35~30':0 ,
+                    '30~25':0 ,
+                    '25~20':0 ,
+                    '20~15':0 ,
+                    '15~10':0 ,
+                    '10~5':0 ,
+                    '5~0':0 ,
+                    '0~-5':0 ,
+                    '-5~-10':0 ,
+                    '-10~-15':0 ,
+                    '-15~-20':0 ,
+                    '-20~-25':0 ,
+                    '-25~-30':0 ,
+                    '-30~-35':0 ,
+                    '-35+':0
+                },
+                'tigan':{
+                    '999999':0,
+                    '40+':0 ,
+                    '40~35':0 ,
+                    '35~30':0 ,
+                    '30~25':0 ,
+                    '25~20':0 ,
+                    '20~15':0 ,
+                    '15~10':0 ,
+                    '10~5':0 ,
+                    '5~0':0 ,
+                    '0~-5':0 ,
+                    '-5~-10':0 ,
+                    '-10~-15':0 ,
+                    '-15~-20':0 ,
+                    '-20~-25':0 ,
+                    '-25~-30':0 ,
+                    '-30~-35':0 ,
+                    '-35+':0
+                },
+                'RHU':{
+                    '999999':0,
+                    '100':0,
+                    '100~90':0,
+                    '90~80':0,
+                    '80~70':0,
+                    '70~60':0,
+                    '60~50':0,
+                    '50~40':0,
+                    '40~30':0,
+                    '30~20':0,
+                    '20~10':0,
+                    '10~0':0
+                },
+                'PRE_1h':{
+                    '999999':0,
+                    '50':0,
+                    '50~20':0,
+                    '20~10':0,
+                    '10~8':0,
+                    '8~6':0,
+                    '6~4':0,
+                    '4~2':0,
+                    '2~1':0,
+                    '1~0.01':0,
+                    '0':0
+                },
+                'PRS':{
+                    '999999':0,
+                    '1030':0,
+                    '1030~1020':0,
+                    '1020~1010':0,
+                    '1010~1000':0,
+                    '1000~990':0,
+                    '990~980':0,
+                    '980~970':0,
+                    '970~920':0,
+                    '920~870':0,
+                    '870~820':0,
+                    '820~770':0,
+                    '770~720':0,
+                    '720~670':0,
+                    '670~620':0,
+                    '620~570':0,
+                    '520':0
+                },
+                'windpower':{
+                    '999999':0,
+                    '7':0,
+                    '7~6':0,
+                    '6~5':0,
+                    '5~4':0,
+                    '4~3':0,
+                    '3~2':0,
+                    '2~1':0,
+                    '0':0
+                }
             }
+            rangeMap['TEM_Max'] = rangeMap['TEM_Min'] = rangeMap['TEM'];
+            rangeMap['PRS_Max'] = rangeMap['PRS_Min'] = rangeMap["PRS_Sea"] = rangeMap['PRS'];
+
+
+                console.log(rangeMap);
+
+            rangeMap = rangeMap[this.weatherType];
+
              weatherData.forEach((d)=>{
             //    console.log(d.Date.split(' '));
-                rangeMap[this.getRange(d.TEM)]++;
+                rangeMap[this.getRange(d[this.weatherType])]++;
                 // totalCounts++;
             });
 
             for (const range in rangeMap) {
                 if (rangeMap.hasOwnProperty.call(rangeMap, range)) {
                     
+                   let  value = range.split("~")[1];
+                    value = value || range;
                    chartData.push({
                        name:range,
                        value:rangeMap[range],
                     itemStyle:{
-                            color:this.getColor(parseInt(range)),
+                            color:this.getColor(parseFloat(value)),
                         }
                    });
                 }
             }
-            // console.log(chartData);
+            console.log(chartData);
             return chartData
         },
-        getRange(tem){
-            return tem == 999999 ? '999999' :
-                    tem > 40 ? '40+' :
-                    tem > 35 ? '40~35' :
-                    tem > 30 ? '35~30' :
-                    tem > 25 ? '30~25' :
-                    tem > 20 ? '25~20' :
-                    tem > 15 ? '20~15' :
-                    tem > 10 ? '15~10' :
-                    tem > 5 ? '10~5' :
-                    tem > 0 ? '5~0' :
-                    tem > -5 ? '0~-5' :
-                    tem > -10 ? '-5~-10' :
-                    tem > -15 ? '-10~-15' :
-                    tem > -20 ? '-15~-20' :
-                    tem > -25 ? '-20~-25' :
-                    tem > -30 ? '-25~-30' :
-                    tem > -35 ? '-30~-35' :
-                    tem > -40 ? '-35+' : '-35+'
+         getRange(value){
+            let range = '999999'
+            switch (this.weatherType) {
+                 case 'TEM_Max':
+                case 'TEM_Min':
+                case 'TEM':
+                case 'tigan':
+                    range = value == 999999 ? '999999' :
+                    value >= 40 ? '40+' :
+                    value >= 35 ? '40~35' :
+                    value >= 30 ? '35~30' :
+                    value >= 25 ? '30~25' :
+                    value >= 20 ? '25~20' :
+                    value >= 15 ? '20~15' :
+                    value >= 10 ? '15~10' :
+                    value >= 5 ? '10~5' :
+                    value >= 0 ? '5~0' :
+                    value >= -5 ? '0~-5' :
+                    value >= -10 ? '-5~-10' :
+                    value >= -15 ? '-10~-15' :
+                    value >= -20 ? '-15~-20' :
+                    value >= -25 ? '-20~-25' :
+                    value >= -30 ? '-25~-30' :
+                    value >= -35 ? '-30~-35' :
+                    value >= -40 ? '-35+' : '-35+'
+                    break;
+                case 'RHU':
+                    range = value == 999999 ? '999999' :
+                            value >= 100 ? '100' :
+                            value >= 90 ?  '100~90':
+                            value >= 80 ?  '90~80':
+                            value >= 70 ?  '80~70':
+                            value >= 60 ?  '70~60':
+                            value >= 50 ?  '60~50':
+                            value >= 40 ?  '50~40':
+                            value >= 30 ?  '40~30':
+                            value >= 20 ?  '30~20':
+                            value >= 10 ?  '20~10':
+                            value >= 0 ?   '10~0':'10~0'
+                        break;
+                case 'PRE_1h':
+                    range = value == 999999 ? '999999' :
+                            value == 50 ? '50' :
+                            value >= 20 ? '50~20' :
+                            value >= 10 ? '20~10' :
+                            value >= 8 ? '10~8' :
+                            value >= 6 ? '8~6' :
+                            value >= 4 ? '6~4' :
+                            value >= 2 ? '4~2' :
+                            value >= 1 ? '2~1' :
+                            value >= 0.01 ? '1~0.01' :
+                            value >= 0 ? '0' : '0'
+                            break;
+                case 'PRS':
+                 case 'PRS_Sea':
+                case 'PRS_Max':
+                case 'PRS_Min':
+                     range = value == 999999 ? '999999' :
+                            value == 1030 ? '1030' :
+                            value >= 1020 ? '1030~1020' :
+                            value >= 1010 ? '1020~1010' :
+                            value >= 1000 ? '1010~1000' :
+                            value >= 990 ? '1000~990' :
+                            value >= 980 ? '990~980' :
+                            value >= 970 ? '980~970' :
+                            value >= 920 ? '970~920' :
+                            value >= 870 ? '920~870' :
+                            value >= 820 ? '870~820' :
+                            value >= 770 ? '820~770' :
+                            value >= 720 ? '770~720' :
+                            value >= 670 ? '720~670' :
+                            value >= 620 ? '670~620' :
+                            value >= 570 ? '620~570' :
+                            value >= 520 ? '520' : '520'
+                    break;
+                case 'windpower':
+                     range = value == 999999 ? '999999' :
+                            value >= 7 ? '7' :
+                            value >= 6 ? '7~6' :
+                            value >= 5 ? '6~5' :
+                            value >= 4 ? '5~4' :
+                            value >= 3 ? '4~3' :
+                            value >= 2 ? '3~2' :
+                            value >= 1 ? '2~1' :
+                            value >= 0 ? '0' : '0'
+                    break;
+                default:
+                    break;
+            }
+            // console.log(value,range);
+            return range;
         },
-        getColor(tem){
-            return  tem == 999999 ? 'rgba(0,0,0,1)':
-                    tem > 40 ? 'rgba(225,84,86,1)':
-                    tem > 35 ? 'rgba(254,1,1,1)':
-                    tem > 30 ? 'rgba(254,97,1,1)':
-                    tem > 25 ? 'rgba(254,129,1,1)':
-                    tem > 20 ? 'rgba(254,194,1,1)':
-                    tem > 15 ? 'rgba(254,254,1,1)':
-                    tem > 10 ? 'rgba(221,254,1,1)':
-                    tem > 5 ? 'rgba(147,254,1,1)':
-                    tem > 0 ? 'rgba(17,254,1,1)':
-                    tem > -5 ? 'rgba(0,254,180,1)':
-                    tem > -10 ? 'rgba(0,254,246,1)':
-                    tem > -15 ? 'rgba(0,234,254,1)':
-                    tem > -20 ? 'rgba(0,234,254,1)':
-                    tem > -25 ? 'rgba(0,165,254,1)':
-                    tem > -30 ? 'rgba(0,100,254,1)':
-                    tem > -35 ? 'rgba(0,13,254,1)':
-                    tem > -40 ? 'rgba(0,13,254,1)':'rgba(0,13,254,1)'
+        getColor(value){
+            let color = 'rgba(0,0,0,1)';
+            switch (this.weatherType) {
+                case 'TEM':
+                case 'TEM_Max':
+                case 'TEM_Min':
+                case 'tigan':
+                   color =  value == 999999 ? 'rgba(0,0,0,1)':
+                            value >= 40 ? 'rgba(225,84,86,1)':
+                            value >= 35 ? 'rgba(254,1,1,1)':
+                            value >= 30 ? 'rgba(254,97,1,1)':
+                            value >= 25 ? 'rgba(254,129,1,1)':
+                            value >= 20 ? 'rgba(254,194,1,1)':
+                            value >= 15 ? 'rgba(254,254,1,1)':
+                            value >= 10 ? 'rgba(221,254,1,1)':
+                            value >= 5 ? 'rgba(147,254,1,1)':
+                            value >= 0 ? 'rgba(17,254,1,1)':
+                            value >= -5 ? 'rgba(0,254,180,1)':
+                            value >= -10 ? 'rgba(0,254,246,1)':
+                            value >= -15 ? 'rgba(0,234,254,1)':
+                            value >= -20 ? 'rgba(0,234,254,1)':
+                            value >= -25 ? 'rgba(0,165,254,1)':
+                            value >= -30 ? 'rgba(0,100,254,1)':
+                            value >= -35 ? 'rgba(0,13,254,1)':
+                            value >= -40 ? 'rgba(0,13,254,1)':'rgba(0,13,254,1)'
+                    break;
+                case 'RHU':
+                    color = value == 999999 ? 'rgba(0,0,0,1)':
+                            value >= 100 ? 'rgba(8,0,0,1)':
+                            value >= 90 ? 'rgba(51,13,128,1)':
+                            value >= 80 ? 'rgba(70,33,164,1)':
+                            value >= 70 ? 'rgba(84,64,182,1)':
+                            value >= 60 ? 'rgba(67,73,201,1)':
+                            value >= 50 ? 'rgba(238,253,202,1)':
+                            value >= 40 ? 'rgba(249,250,213,1)':
+                            value >= 30 ? 'rgba(247,79,20,1)':
+                            value >= 20 ? 'rgba(252,38,3,1)':
+                            value >= 10 ? 'rgba(231,0,0,1)':
+                            value >= 0 ? 'rgba(213,6,55,1)':'rgba(213,6,55,1)'
+                            break;
+                case 'PRE_1h':
+                    color = value == 999999 ? 'rgba(0,0,0,1)':
+                            value >= 50 ? 'rgba(141,45,105,1)':
+                            value >= 20 ? 'rgba(217,106,55,1)':
+                            value >= 10 ? 'rgba(237,45,251,1)':
+                            value >= 8 ? 'rgba(41,137,112,1)':
+                            value >= 6 ? 'rgba(41,45,231,1)':
+                            value >= 4 ? 'rgba(117,189,255,1)':
+                            value >= 2 ? 'rgba(89,191,103,1)':
+                            value >= 1 ? 'rgba(171,235,167,1)':
+                            value >= 0.01 ? 'rgba(203,244,202,1)':
+                            value >= 0 ? 'rgba(245,245,245,1)':'rgba(245,245,245,1)'
+                    break;
+                case 'PRS':
+                case 'PRS_Sea':
+                case 'PRS_Max':
+                case 'PRS_Min':
+                    color = value == 999999 ? 'rgba(0,0,0,1)':
+                            value >= 1030 ? 'rgba(0,18,218,1)':
+                            value >= 1020 ? 'rgba(0,117,255,1)':
+                            value >= 1010 ? 'rgba(87,216,253,1)':
+                            value >= 1000 ? 'rgba(9,234,203,1)':
+                            value >= 990 ? 'rgba(14,211,119,1)':
+                            value >= 980 ? 'rgba(10,179,21,1)':
+                            value >= 970 ? 'rgba(132,217,142,1)':
+                            value >= 920 ? 'rgba(189,244,9,1)':
+                            value >= 870 ? 'rgba(244,244,15,1)':
+                            value >= 820 ? 'rgba(255,218,8,1)':
+                            value >= 770 ? 'rgba(252,179,8,1)':
+                            value >= 720 ? 'rgba(250,135,3,1)':
+                            value >= 670 ? 'rgba(255,71,0,1)':
+                            value >= 620 ? 'rgba(251,8,1,1)':
+                            value >= 570 ? 'rgba(190,4,51,1)':
+                            value >= 520 ? 'rgba(124,3,108,1)':'rgba(124,3,108,1)'
+                    break;
+                case 'windpower':
+                    color = value == 999999 ? 'rgba(0,0,0,1)':
+                            value >= 7 ? 'rgba(4,54,250,1)':
+                            value >= 6 ? 'rgba(2,209,251,1)':
+                            value >= 5 ? 'rgba(0,237,196,1)':
+                            value >= 4 ? 'rgba(26,187,11,1)':
+                            value >= 3 ? 'rgba(123,215,8,1)':
+                            value >= 2 ? 'rgba(254,190,1,1)':
+                            value >= 1 ? 'rgba(255,39,2,1)':
+                            value >= 0 ? 'rgba(88,0,135,1)':'rgba(88,0,135,1)'
+                    break;
+                default:
+                    break;
+            }
+            return color
         },
     },
     watch:{
         showData(newShowData){
             console.log("Pie监听到更新");
             if(this.echart){
-                let res = this.dealTEMDataToEchartData(newShowData);
+                let res = this.dealWeatherDataToEchartData(newShowData);
                 // console.log(res);
                 this.renderChart(res);
             }
+        },
+        weatherType(newWeatherType){
+            console.log("pie监听到weatherType更新",'old',this.weatherType,'NEW',newWeatherType);
+            switch (newWeatherType) {
+                case 'TEM':
+                case 'TEM_Max':
+                case 'TEM_Min':
+                case 'tigan':
+
+                    this.unit = '℃',
+                    this.zhongwen = '温度'
+                    break;
+                case 'RHU':
+                    this.unit = '%',
+                    this.zhongwen = '相对湿度'
+                    break;
+            
+                default:
+                    break;
+            }
+            if (this.echart) {
+                let res = this.dealWeatherDataToEchartData(this.showData);
+                this.renderChart(res);
+            }
+
         }
     },
     computed:{
         ...mapState({
-            showData: state => state.showData
+            showData: state => state.showData,
+            weatherType: state => state.weatherType
         })
     }
 }
