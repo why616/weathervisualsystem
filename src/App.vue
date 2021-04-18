@@ -17,7 +17,7 @@
     </div>
     
     <div class="right-chart">
-      <div class="chart-item">
+      <!-- <div class="chart-item">
         <Zzt/>
       </div>
       <div class="chart-item">
@@ -25,7 +25,7 @@
       </div>
       <div class="chart-item">
         <Zzt/>
-      </div>
+      </div> -->
     </div>
     <!-- <div class="zzt">
       <Zzt/>

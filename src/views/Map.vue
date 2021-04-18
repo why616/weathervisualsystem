@@ -33,6 +33,9 @@
       </el-option>
     </el-select>
   </div>
+  <div class="filter-area">
+      
+  </div>
   <div class="legend">
       <Legend :range_color="legend"/>
   </div>
@@ -40,6 +43,7 @@
       <pre>地图中心-> Lat（纬度）：{{currentLatLng.lat}} Lng（经度）：{{currentLatLng.lng}}           地图层级->  {{currentZoomLev}}</pre>
   </div>
   <div class="function-bar">
+      <el-button type="primary" icon="el-icon-cloudy" @click="changeShowWeatherIcon"  circle></el-button>
       <el-button type="primary" icon="el-icon-edit" @click="changeSelectProvinceMode" circle></el-button>
   </div>
 </div>
@@ -54,7 +58,7 @@ import Legend from "@/components/Legend.vue"
 // import Legend from '../components/legend.vue';
 export default {
     created(){
-        this.createNewWeatherTypeData();
+        // this.createNewWeatherTypeData();
     },
     mounted(){
         
@@ -205,7 +209,7 @@ export default {
                 {label:'最高温度',value:'TEM_Max'},
                 {label:'最低温度',value:'TEM_Min'},
                 {label:'相对湿度',value:'RHU'},
-                {label:'水汽压',value:'VAP'},
+                // {label:'水汽压',value:'VAP'},
                 {label:'气压',value:'PRS'},
                 {label:'海平面气压',value:'PRS_Sea'},
                 {label:'最高气压',value:'PRS_Max'},
@@ -217,7 +221,11 @@ export default {
                 {label:'总云量',value:"CLO_Cov"},
                 {label:'现在天气',value:"WEP_Now"}
             ],
-            preZoomRange:7
+            preZoomRange:7,
+            showWeatherFlag:false,
+            markersFilters:{},
+            showDataFilters:{}
+
 
         };
     },
@@ -392,7 +400,7 @@ export default {
                     s.WEP_Now = data[t].WEP_Now;
                     s.tigan = data[t].tigan;
                     s.windpower = data[t].windpower;
-                    s.VIS = data[t].VIS;
+                    s.VIS = data[t].VIS/1000;
                     s.CLO_Cov = data[t].CLO_Cov;
                     s.WEP_Now = data[t].WEP_Now;
                     s.PRS_Sea = data[t].PRS_Sea;
@@ -461,16 +469,17 @@ export default {
             });
             return newStations;
         },
-        addMarkersToCiLayer(filterFn,baseMarkers,keepShowMarker){
+        addMarkersToCiLayer(filtersFn,baseMarkers,keepShowMarker,dontAdd){
             keepShowMarker = !keepShowMarker;
+            dontAdd = !dontAdd;
             // console.log("pre");
             // this.map.eachLayer(l=>{
             //     console.log(l);
             // })
             // console.log(markers);
             let newMarkers = [];
-
-            filterFn = filterFn || function(e){return e};
+            
+            filtersFn = filtersFn || {'provinceMarkerFilter':this.provinceMarkerFilter};
             
             
             baseMarkers = baseMarkers || this.markers;
@@ -478,16 +487,28 @@ export default {
             // this.removeAllMarkers();
             baseMarkers.forEach((marker)=>{
                 // this.ciLayer.removeMarker(marker);
-                filterFn(marker) && newMarkers.push(marker);
+                for (const filter in filtersFn) {
+                    if (Object.hasOwnProperty.call(filtersFn, filter) && filtersFn[filter]) {
+                       if(!filtersFn[filter](marker)) return ; 
+                    }
+                }
+                newMarkers.push(marker);
             });
 
             // console.log(markers);
             // this.ciLayer.redraw();
             // this.ciLayer.bringToFront();
             // console.log(this.ciLayer);
-            this.ciLayer.addLayers(newMarkers);
+            
+            if(dontAdd){
+                this.ciLayer.addLayers(newMarkers);
+                console.log("本次将添加点",newMarkers);
+            } 
+            else console.log("本次不会添加点");
             if(keepShowMarker)
                 this.showMarkers = newMarkers;
+            else
+                console.log("本次不更新showdata");
             // this.map.flyTo(newMarkers[Math.round(newMarkers.length/2)].getLatLng());
             // console.log("then");
             // this.map.eachLayer(l=>{
@@ -508,9 +529,11 @@ export default {
                          || this.provinceSelect == '全国') return data;
         },
         rangeMarkerHighLevFilter(max,min){
+            let weatherType = this.weatherType
             return (marker)=>{
                 // console.log("该marker的TEM:",marker.TEM,"最大最小值:",max,min);
-                if (marker[this.weatherType] < max && marker[this.weatherType] >= min)  return marker;
+                if (marker[weatherType] < max && marker[weatherType] >= min)  return marker;
+                // else console.log(`不合格: max:${max} min:${min} value:${marker[weatherType]}`);
             }
         },
         onZoomLevChange(e){
@@ -551,21 +574,29 @@ export default {
         updateRequestData(reqData){
             this.requestData = reqData;
         },
-        updateShowData(filterFn,baseWeatherData){
-            filterFn = filterFn || function(e){return e};
-
+        updateShowData(filtersFn,baseWeatherData){
             let newShowData = [];
-                
+
+            filtersFn = filtersFn || {'provinceWeatherDataFilter':this.provinceWeatherDataFilter};
+            
             
             baseWeatherData = baseWeatherData || this.requestData;
-            
+
+            // console.log("将移除",baseMarkers.length);
+            // this.removeAllMarkers();
             baseWeatherData.forEach((data)=>{
-                filterFn(data) && newShowData.push(data);
+                // this.ciLayer.removeMarker(marker);
+                for (const filter in filtersFn) {
+                    if (Object.hasOwnProperty.call(filtersFn, filter)) {
+                       if(!filtersFn[filter](data)) return ; 
+                    }
+                }
+                newShowData.push(data);
             });
             this.$store.commit('updateShowData',newShowData);
             this.showData = newShowData;
         },
-        createMarkers(data){
+        createMarkers(data,orderedWeatherType){
             let markers = data.map(s => {
                { // console.log(s);
                 //  if(s.stationType != "基准站") return;
@@ -577,9 +608,47 @@ export default {
                 //  console.log("parsed:",parse);
                }
                
-                let icon = this.getIcon(s[this.weatherType]);
+                let icon = this.getIcon(s[orderedWeatherType || this.weatherType],orderedWeatherType);
                 let marker =  L.marker({lng:s.lng,lat:s.lat},{icon});
                 //这里是固定内容，但是还没写完全
+                let weather_now = undefined;
+                switch (s.WEP_Now) {
+                    case '0.0000':
+                        weather_now = "晴";
+                        break;
+                    
+                    case '5.0000':
+                    case '6.0000':
+                    case '7.0000':
+                         weather_now = "尘";
+                        break;
+                    case '10.0000':
+                         weather_now = "薄雾";
+                        break;
+                    case '21.0000':
+                    case '20.0000':
+                    case '60.0000':
+                    case '62.0000':
+                    case '50.0000':
+                         weather_now = "雨";
+                        break;
+                    case '28.0000':
+                    case '44.0000':
+                    case '45.0000':
+                    case '46.0000':
+                         weather_now = "大雾";
+                        break;
+                    case '70.0000':
+                    case '22.0000':
+                    case '74.0000':
+                         weather_now = "雪";
+                        break;
+                    case 999999:
+                    case '999999.0000':
+                         weather_now = "天气缺测";   
+                    default:
+                        break;
+                }
                 marker.bindPopup(`
                     <p>站点：${s.stationName}</p>
                     <p>省份：${s.province}</p>
@@ -592,8 +661,13 @@ export default {
                     <p>一小时降雨量：${s.PRE_1h}</p>
                     <p>气压：${s.PRS}</p>
                     <p>体感温度：${s.tigan}</p>
+                    <p>能见度：${s.VIS}</p>
+                    <p>现在天气：${weather_now}</p>
+                    <p>天气code：${s.WEP_Now}</p>
                     `
                 );
+                if(!weather_now) console.log(`${s.province} ${s.stationName} ${s.WEP_Now}`)
+                
                 //在这里附上值，供Filter筛选
                 marker.province = s.province;
                 marker.TEM = s.TEM;
@@ -629,14 +703,21 @@ export default {
                 data = this.stationMappingWeatherData(data);
                 this.updateRequestData(data);
                 this.removeAllMarkers();
-                this.createMarkers(data);
+                if(this.showWeatherFlag)
+                    this.createMarkers(data,'WEP_Now');
+                else
+                    this.createMarkers(data);
                 //    this.updateMarkerAndShowDataByProvice();
                 this.clearGeoJsonLayer();
                 this.updateGeoJson(this.weatherType);
                 this.addChinaGeoJson();
-                if(!this.ciLayerRemoved)
-                    this.addMarkersToCiLayer(this.provinceMarkerFilter);
-                this.updateShowData(this.provinceWeatherDataFilter);
+                // this.addFilter(this.markersFilters,this.provinceMarkerFilter,'provinceMarkerFilter');
+                // this.addFilter(this.showDataFilters,this.provinceWeatherDataFilter,'provinceWeatherDataFilter');
+                if(!this.ciLayerRemoved){
+                    this.updateShowMarkers();
+                    this.addMarkersToCiLayer(this.markersFilters,this.showMarkers,true);
+                }
+                this.updateShowData();
                 this.fullscreenLoading = false;
                 this.$message({
                     message: '日期更新完成',
@@ -656,12 +737,13 @@ export default {
         },
         updateMarkerAndShowDataByProvice(){
             this.removeAllMarkers();
-
-                this.showCiLayerFromMap();
-                this.addMarkersToCiLayer(this.provinceMarkerFilter);
-                this.ciLayerRemoved = false;
+            // this.addFilter(this.markersFilters,this.provinceMarkerFilter,'provinceMarkerFilter');
+            // this.addFilter(this.showDataFilters,this.provinceWeatherDataFilter,'provinceWeatherDataFilter');
+            this.showCiLayerFromMap();
+            this.addMarkersToCiLayer();
+            this.ciLayerRemoved = false;
             
-            this.updateShowData(this.provinceWeatherDataFilter);
+            this.updateShowData();
             if(this.provinceSelect != '全国')
             this.moveMap();
         },
@@ -675,9 +757,6 @@ export default {
                 this.ciLayer.removeMarker(marker);
             }); 
              this.ciLayer.redraw();
-        },
-        addShowMarkers(){
-
         },
         async getGeoJson(){
            {/*颜色比例卡
@@ -975,6 +1054,30 @@ export default {
                             value >= 1 ? 'rgba(255,39,2,1)':
                             value >= 0 ? 'rgba(88,0,135,1)':'rgba(88,0,135,1)'
                     break;
+                case 'VIS':
+                    color = value == 999999 ? 'rgba(0,0,0,1)':
+                            value >= 30 ? 'rgba(241,245,253,1)':
+                            value >= 20 ? 'rgba(197,232,252,1)':
+                            value >= 10 ? 'rgba(152,220,253,1)':
+                            value >= 5 ? 'rgba(135,244,89,1)':
+                            value >= 3 ? 'rgba(240,240,56,1)':
+                            value >= 2 ? 'rgba(240,181,114,1)':
+                            value >= 1 ? 'rgba(240,109,55,1)':
+                            value >= 0.5 ? 'rgba(234,50,55,1)':
+                            value >= 0.2 ? 'rgba(162,56,255,1)':
+                            value >= 0 ? 'rgba(130,73,55,1)':'rgba(130,73,55,1)'
+                    break;
+                case 'CLO_Cov':
+                    color = value == 100 ? 'rgba(213,213,205,1)':
+                            value >= 90 ? 'rgba(207,208,202,1)':
+                            value >= 80 ? 'rgba(195,197,196,1)':
+                            value >= 70 ? 'rgba(177,186,185,1)':
+                            value >= 60 ? 'rgba(178,186,185,1)':
+                            value >= 30 ? 'rgba(154,161,160,1)':
+                            value >= 20 ? 'rgba(122,118,101,1)':
+                            value >= 10 ? 'rgba(132,119,70,1)':
+                            value >= 0 ? 'rgba(164,154,118,1)':'rgba(164,154,118,1)'
+                    break;
                 default:
                     break;
             }
@@ -1074,12 +1177,17 @@ export default {
             }
             this.provinceSelect = specialName[e.target.feature.properties.name] || e.target.feature.properties.name.slice(0,-1);
             this.map.fitBounds(e.target.getBounds());
+            
             this.provinceSelecterDisable = false;
             this.ciLayerRemoved = false;
-            this.addMarkersToCiLayer(this.provinceMarkerFilter);
-            this.updateShowData(this.provinceMarkerFilter);
+            this.addFilter(this.markersFilters,this.provinceMarkerFilter,'provinceMarkerFilter');
+            // this.addFilter(this.showDataFilters,this.provinceWeatherDataFilter,'provinceWeatherDataFilter');
+            this.updateShowMarkers();
+            // this.removeAllMarkers();
+            this.addMarkersToCiLayer(this.markersFilters,this.showMarkers,true);
+            this.updateShowData();
             this.showCiLayerFromMap();
-
+            // this.map.setMaxBounds(e.target.getBounds());
             let center = e.target.feature.properties.center;
             // this.map.flyToBounds(e.target.getBounds());
             // this.map.flyTo({lat:center[1],lng:center[0]});
@@ -1113,9 +1221,9 @@ export default {
 
                 });
         },
-        getIcon(value){
+        getIcon(value,orderedWeatherType){
             let url  = 'TEM999999.svg';
-            switch (this.weatherType) {
+            switch (orderedWeatherType || this.weatherType) {
                 case 'tigan':
                 case 'TEM_Min':
                 case 'TEM_Max':
@@ -1188,13 +1296,7 @@ export default {
                         value >= 0 ? 'RHU0.svg':'RHU0.svg'
                     url = 'RHUdots/' + url;
                     break;
-                case 'VAP':
-                    //水汽压
-                    console.log('获得当前选择：水汽压',this.weatherType);
 
-                   
-
-                    break;
                 case 'PRE_1h':
                     // console.log('获得当前选择：一小时降雨',this.weatherType);
                     url = 
@@ -1212,7 +1314,7 @@ export default {
                     url = 'PRE_1hdots/' + url;
                     break;
                 case 'windpower':
-                    console.log('获得当前选择：风力',this.weatherType);
+                    // console.log('获得当前选择：风力',this.weatherType);
                     url = value == 999999 ? 'windpower999999.svg':
                             value >= 7 ? 'windpower7.svg':
                             value >= 6 ? 'windpower6.svg':
@@ -1225,44 +1327,107 @@ export default {
                     url = 'windpowerdots/' + url;
                     
                     break;
-                case 'tigan':
-                    console.log('获得当前选择：体感温度',this.weatherType);
-                    url = 'TEM15.svg';
-                    
-                    break;
                 case 'VIS':
-                    console.log('获得当前选择：能见度',this.weatherType);
-                    url = 'TEM10.svg';
-                    
+                    // console.log('获得当前选择：能见度',this.weatherType);
+                    url = value == 999999 ? 'VIS999999.svg':
+                        value >= 30 ? 'VIS30.svg':
+                        value >= 20 ? 'VIS20.svg':
+                        value >= 10 ? 'VIS10.svg':
+                        value >= 5 ? 'VIS5.svg':
+                        value >= 3 ? 'VIS3.svg':
+                        value >= 2 ? 'VIS2.svg':
+                        value >= 1 ? 'VIS1.svg':
+                        value >= 0.5 ? 'VIS0.5.svg':
+                        value >= 0.2 ? 'VIS0.2.svg':
+                        value >= 0 ? 'VIS0.svg':'VIS0.svg'
+                    url = 'VISdots/' + url;
+
                     break;
                 case 'CLO_Cov':
-                    console.log('获得当前选择：能见度',this.weatherType);
-                    url = 'TEM10.svg';
+                    // console.log('获得当前选择：能见度',this.weatherType);
+                    url = 
+                        value == 100 ? 'CLO_Cov100.svg':
+                        value >= 90 ? 'CLO_Cov90.svg':
+                        value >= 80 ? 'CLO_Cov80.svg':
+                        value >= 70 ? 'CLO_Cov70.svg':
+                        value >= 60 ? 'CLO_Cov60.svg':
+                        value >= 30 ? 'CLO_Cov30.svg':
+                        value >= 20 ? 'CLO_Cov20.svg':
+                        value >= 10 ? 'CLO_Cov10.svg':
+                        value >= 0 ? 'CLO_Cov0.svg':'CLO_Cov0.svg'
+                    url = 'CLO_Covdots/' + url;
                     
                     break;
                 case 'WEP_Now':
-                    console.log('获得当前选择：能见度',this.weatherType);
-                    url = 'TEM10.svg';
+                    // console.log('获得当前选择：能见度',this.weatherType);
+                  let weather_now;
+                  switch (value) {
+                    case '0.0000':
+                        weather_now = "sunny.png";
+                        break;
                     
+                    case '5.0000':
+                    case '6.0000':
+                    case '7.0000':
+                         weather_now = "dust.png";
+                        break;
+                    case '10.0000':
+                         weather_now = "cloudy.png";
+                        break;
+                    case '21.0000':
+                    case '20.0000':
+                    case '60.0000':
+                    case '62.0000':
+                    case '50.0000':
+                         weather_now = "rain.png";
+                        break;
+                    case '28.0000':
+                    case '44.0000':
+                    case '45.0000':
+                    case '46.0000':
+                         weather_now = "cloudy.png";
+                        break;
+                    case '70.0000':
+                    case '22.0000':
+                    case '74.0000':
+                         weather_now = "snow.png";
+                        break;
+                    case 999999:
+                    case '999999.0000':
+                         weather_now = "lost.svg";   
+                    default:
+                         weather_now = "lost.svg";   
+
+                        break;
+                }
+
+                    url = 'WEP_Nowdots/'+weather_now;
+                    if (this.iconList[url])  return  this.iconList[url];
+                    icon =L.icon({
+                        iconUrl: url,
+                        iconSize: [30, 30],
+                        iconAnchor: [15, 15]
+                    });
+                    this.iconList[url] = icon;
                     break;
                 default:
                     console.log('该选择不存在！：',this.weatherType);
 
                     break;
             }
-            // console.log(url);
+            // console.log(url); 
             // let currZoom = this.map.getZoom();
             let icon = undefined;
-                if (this.iconList[url])  return  this.iconList[url];
-                    icon =L.icon({
-                    iconUrl: url,
-                    iconSize: [20, 20],
-                    iconAnchor: [10, 10]
-                });
-                this.iconList[url] = icon;
+            if (this.iconList[url])  return  this.iconList[url];
+            icon =L.icon({
+                iconUrl: url,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
+            this.iconList[url] = icon;
             return icon;
         },
-        handleBarChartSelect(range){
+        handleBarChartSelect({range,chartOrigin}){
             // console.log("得到范围：",range);
             let selectTEMRange = range.split("~");
             let max,min;
@@ -1293,18 +1458,30 @@ export default {
                 //对showMarkers执行addMarkersToCiLayer操作
                 if(this.provinceSelect == '全国' && this.map.getZoom()>5)
                     this.map.setZoom(6);
-                this.addMarkersToCiLayer(this.rangeMarkerHighLevFilter(max,min),this.showMarkers,true);
+
+                //这里最好加上来源名作为name，比如左固定的筛选
+                this.addFilter(this.markersFilters,this.rangeMarkerHighLevFilter(max,min),'rangeMarkerHighLevFilterBy'+`${chartOrigin}`);
+                console.log("添加rangeMarkerHighLevFilter筛选器");
+                this.addMarkersToCiLayer(this.markersFilters,this.showMarkers,true);
                 //不需要改变showData
         },
-        handleBarChartCancelSelect(){
+        handleBarChartCancelSelect({chartOrigin}){
             this.removeAllMarkers();
             //对showMarkers执行addMarkersToCiLayer操作
+                console.log("移除rangeMarkerHighLevFilter筛选器");
+
+            this.removeFilter(this.markersFilters,`rangeMarkerHighLevFilterBy${chartOrigin}`);
             this.addMarkersToCiLayer(undefined,this.showMarkers,true);
         },
-        async changeShowWeatherType(){
+        changeShowWeatherType(){
             this.removeAllMarkers();
-            this.createMarkers(this.requestData);
-            this.addMarkersToCiLayer(this.provinceMarkerFilter);
+            if(this.showWeatherFlag)
+                this.createMarkers(this.requestData,'WEP_Now');
+            else
+                this.createMarkers(this.requestData);
+            // this.addFilter(this.markersFilters,this.provinceMarkerFilter,'provinceMarkerFilter');
+            this.updateShowMarkers();
+            this.addMarkersToCiLayer(this.markersFilters,this.showMarkers,true);
             this.updateLegend();
             this.clearGeoJsonLayer();
             this.updateGeoJson(this.weatherType);
@@ -1404,6 +1581,28 @@ export default {
                     {range:'3~2',color:'rgba(254,190,1,1)'},
                     {range:'2~1',color:'rgba(255,39,2,1)'},
                     {range:'0',color:'rgba(88,0,135,1)'}
+                ],
+                'VIS':[
+                    {range:'30',color:'rgba(241,245,253,1)'},
+                    {range:'30~20',color:'rgba(197,232,252,1)'},
+                    {range:'20~10',color:'rgba(152,220,253,1)'},
+                    {range:'10~5',color:'rgba(135,244,89,1)'},
+                    {range:'5~3',color:'rgba(240,240,56,1)'},
+                    {range:'3~2',color:'rgba(240,181,114,1)'},
+                    {range:'2~1',color:'rgba(240,109,55,1)'},
+                    {range:'1~0.5',color:'rgba(234,50,55,1)'},
+                    {range:'0.5~0.2',color:'rgba(162,56,255,1)'},
+                    {range:'0',color:'rgba(130,73,55,1)'}
+                ],
+                'CLO_Cov':[
+                    {range:'90',color:'rgba(207,208,202,1)'},
+                    {range:'90~80',color:'rgba(195,197,196,1)'},
+                    {range:'80~70',color:'rgba(177,186,185,1)'},
+                    {range:'70~60',color:'rgba(178,186,185,1)'},
+                    {range:'60~30',color:'rgba(154,161,160,1)'},
+                    {range:'30~20',color:'rgba(122,118,101,1)'},
+                    {range:'20~10',color:'rgba(132,119,70,1)'},
+                    {range:'0~10',color:'rgba(164,154,118,1)'}
                 ]
             }
             legendMap['TEM_Max'] = legendMap['TEM_Min'] = legendMap['TEM'];
@@ -1443,19 +1642,42 @@ export default {
                 // {value:570,color:'rgba(190,4,51,1)',icon:'PRS'},
                 // {value:520,color:'rgba(124,3,108,1)',icon:'PRS'},
                 
-                {value:999999,color:'rgba(0,0,0,1)',icon:'windpower'},
-                {value:7,color:'rgba4,54,250,1)',icon:'windpower'},
-                {value:6,color:'rgba(2,209,251,1)',icon:'windpower'},
-                {value:5,color:'rgba(0,237,196,1)',icon:'windpower'},
-                {value:4,color:'rgba(26,187,11,1)',icon:'windpower'},
-                {value:3,color:'rgba(123,215,8,1)',icon:'windpower'},
-                {value:2,color:'rgba(254,190,1,1)',icon:'windpower'},
-                {value:1,color:'rgba(255,39,2,1)',icon:'windpower'},
-                {value:0,color:'rgba(88,0,135,1)',icon:'windpower'},
+                // {value:999999,color:'rgba(0,0,0,1)',icon:'windpower'},
+                // {value:7,color:'rgba4,54,250,1)',icon:'windpower'},
+                // {value:6,color:'rgba(2,209,251,1)',icon:'windpower'},
+                // {value:5,color:'rgba(0,237,196,1)',icon:'windpower'},
+                // {value:4,color:'rgba(26,187,11,1)',icon:'windpower'},
+                // {value:3,color:'rgba(123,215,8,1)',icon:'windpower'},
+                // {value:2,color:'rgba(254,190,1,1)',icon:'windpower'},
+                // {value:1,color:'rgba(255,39,2,1)',icon:'windpower'},
+                // {value:0,color:'rgba(88,0,135,1)',icon:'windpower'},
+                // {value:999999,color:'rgba(0,0,0,1)',icon:'VIS'},
+                // {value:30,color:'rgba(241,245,253,1)',icon:'VIS'},
+                // {value:20,color:'rgba(197,232,252,1)',icon:'VIS'},
+                // {value:10,color:'rgba(152,220,253,1)',icon:'VIS'},
+                // {value:5,color:'rgba(135,244,89,1)',icon:'VIS'},
+                // {value:3,color:'rgba(240,240,56,1)',icon:'VIS'},
+                // {value:2,color:'rgba(240,181,114,1)',icon:'VIS'},
+                // {value:1,color:'rgba(240,109,55,1)',icon:'VIS'},
+                // {value:0.5,color:'rgba(234,50,55,1)',icon:'VIS'},
+                // {value:0.2,color:'rgba(162,56,255,1)',icon:'VIS'},
+                // {value:0,color:'rgba(130,73,55,1)',icon:'VIS'},
+
+                {value:100,color:'rgba(213,213,205,1)',icon:'CLO_Cov'},
+                {value:90,color:'rgba(207,208,202,1)',icon:'CLO_Cov'},
+                {value:80,color:'rgba(195,197,196,1)',icon:'CLO_Cov'},
+                {value:70,color:'rgba(177,186,185,1)',icon:'CLO_Cov'},
+                {value:60,color:'rgba(178,186,185,1)',icon:'CLO_Cov'},
+                {value:30,color:'rgba(154,161,160,1)',icon:'CLO_Cov'},
+                {value:20,color:'rgba(122,118,101,1)',icon:'CLO_Cov'},
+                {value:10,color:'rgba(132,119,70,1)',icon:'CLO_Cov'},
+                {value:0,color:'rgba(164,154,118,1)',icon:'CLO_Cov'},
                 
 
 
             ];
+                 
+            
             let getColor = '';
             let getIcon = '';
             let legend = '';
@@ -1507,6 +1729,48 @@ export default {
             });
             // return 
         },
+        changeShowWeatherIcon(){
+            
+            if(this.showWeatherFlag){
+                this.removeAllMarkers();
+                this.createMarkers(this.requestData);
+                // this.markers.forEach(m=>{
+                //     m.setIcon(this.getIcon(m[this.weatherType]));
+                // })
+                this.updateShowMarkers();
+                this.addMarkersToCiLayer(this.markersFilters,this.showMarkers,true);
+
+                this.showWeatherFlag = false;
+            }else{
+                this.removeAllMarkers();
+                // this.markers.forEach(m=>{
+                //     m.setIcon(this.getIcon(m.WEP_Now,'WEP_Now'))
+                // })
+                this.createMarkers(this.requestData,'WEP_Now');
+                //只依赖省选择更新showMarker
+                this.updateShowMarkers();
+                //根据其他筛选器进一步筛选，对showMarker处理，并且不改变showmarker
+                this.addMarkersToCiLayer(this.markersFilters,this.showMarkers,true);
+                this.showWeatherFlag = true;
+
+            }
+            
+            
+        },
+        addFilter(filter,filterFn,name){
+            filter[name] = filterFn;
+        },
+        removeFilter(filter,name){
+            filter[name] = undefined;
+        },
+        updateShowMarkers(){
+            //用省过滤器筛选
+            //对所有markers操作
+            //更新showMarkers
+            //不添加上地图
+            this.addMarkersToCiLayer(undefined,undefined,false,true);
+
+        }
         // handleIconSizeByZoomLev(currZoomLev){
         //     if(this.preZoomRange == 7){
         //         if(currZoomLev <7){
@@ -1593,10 +1857,10 @@ export default {
     }
     .function-bar{
         position: absolute;
+        display: flex;
         top:5px;
         right: 5px;
-        width: 40px;
-        height: 40px;
+        
         z-index: 2001;
 
     }

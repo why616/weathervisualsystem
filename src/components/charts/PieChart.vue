@@ -31,11 +31,11 @@ export default {
             this.echart = echarts.init(this.$refs.chart);
             this.echart.on('click',(e)=>{
                 if(this.selectRange == e.name){
-                    this.$bus.$emit('bar-chart-cancel-select');
+                    this.$bus.$emit('bar-chart-cancel-select',{chartOrigin:'static'});
                     this.selectRange = '';
                 }else{
                     this.selectRange = e.name;
-                    this.$bus.$emit('bar-chart-select',e.name);
+                    this.$bus.$emit('bar-chart-select',{range:e.name,chartOrigin:'static'});
                 }
             })
             
@@ -49,7 +49,7 @@ export default {
                 
                 tooltip: {
                     trigger: 'item',
-                    show:false
+                    
                 },
                 legend: {
                     type:'scroll',
@@ -57,12 +57,14 @@ export default {
                     left:'3%',
                     height:'80%',
                     orient:'vertical',
+                    
                 },
                 series: [
                     {
                         // name:'百分比',
                         type: 'pie',
                         clockwise:false,
+
                         // selectMode:true,
                         radius: ['40%', '70%'],
                         center:['60%','50%'],
@@ -101,6 +103,132 @@ export default {
         },
         dealWeatherDataToEchartData(weatherData){
              let chartData = [];
+             let xAxisData = {
+                'TEM':[  
+                    '40+',
+                    '40~35',
+                    '35~30',
+                    '30~25',
+                    '25~20',
+                    '20~15',
+                    '15~10',
+                    '10~5',
+                    '5~0',
+                    '0~-5',
+                    '-5~-10',
+                    '-10~-15',
+                    '-15~-20',
+                    '-20~-25',
+                    '-25~-30',
+                    '-30~-35',
+                    '-35+',
+                    '999999'
+                ],
+                'tigan':[  
+                    '40+',
+                    '40~35',
+                    '35~30',
+                    '30~25',
+                    '25~20',
+                    '20~15',
+                    '15~10',
+                    '10~5',
+                    '5~0',
+                    '0~-5',
+                    '-5~-10',
+                    '-10~-15',
+                    '-15~-20',
+                    '-20~-25',
+                    '-25~-30',
+                    '-30~-35',
+                    '-35+',
+                    '999999'
+                ],
+                'RHU':[
+                    '100',
+                    '100~90',
+                    '90~80',
+                    '80~70',
+                    '70~60',
+                    '60~50',
+                    '50~40',
+                    '40~30',
+                    '30~20',
+                    '20~10',
+                    '10~0',
+                    '999999'
+                ],
+                'PRE_1h':[
+                    '50',
+                    '50~20',
+                    '20~10',
+                    '10~8',
+                    '8~6',
+                    '6~4',
+                    '4~2',
+                    '2~1',
+                    '1~0.01',
+                    '0',
+                    '999999',
+                ],
+                'PRS':[
+                    '1030',
+                    '1030~1020',
+                    '1020~1010',
+                    '1010~1000',
+                    '1000~990',
+                    '990~980',
+                    '980~970',
+                    '970~920',
+                    '920~870',
+                    '870~820',
+                    '820~770',
+                    '770~720',
+                    '720~670',
+                    '670~620',
+                    '620~570',
+                    '520',
+                    '999999',
+                ],
+                'windpower':[
+                    '7',
+                    '7~6',
+                    '6~5',
+                    '5~4',
+                    '4~3',
+                    '3~2',
+                    '2~1',
+                    '0',
+                    '999999',
+                ],
+                'VIS':[
+                    '30',
+                    '30~20',
+                    '20~10',
+                    '10~5',
+                    '5~3',
+                    '3~2',
+                    '2~1',
+                    '1~0.5',
+                    '0.5~0.2',
+                    '0',
+                    '999999',
+                ],
+                'CLO_Cov':[
+                    '100',
+                    '90',
+                    '90~80',
+                    '80~70',
+                    '70~60',
+                    '60~30',
+                    '30~20',
+                    '20~10',
+                    '10~0',
+                    '999999',
+                ]
+            }
+            xAxisData['TEM_Max'] = xAxisData['TEM_Min'] = xAxisData['TEM'];
+            xAxisData['PRS_Max'] = xAxisData['PRS_Min'] = xAxisData["PRS_Sea"] = xAxisData['PRS'];
             let rangeMap = {
                 'TEM':{
                     '999999':0,
@@ -198,37 +326,73 @@ export default {
                     '3~2':0,
                     '2~1':0,
                     '0':0
+                },
+                'VIS':{
+                    '999999':0,
+                    '30':0,
+                    '30~20':0,
+                    '20~10':0,
+                    '10~5':0,
+                    '5~3':0,
+                    '3~2':0,
+                    '2~1':0,
+                    '1~0.5':0,
+                    '0.5~0.2':0,
+                    '0':0
+                },
+                'CLO_Cov':{
+                    '100':0,
+                    '90':0,
+                    '90~80':0,
+                    '80~70':0,
+                    '70~60':0,
+                    '60~30':0,
+                    '30~20':0,
+                    '20~10':0,
+                    '10~0':0
                 }
             }
             rangeMap['TEM_Max'] = rangeMap['TEM_Min'] = rangeMap['TEM'];
             rangeMap['PRS_Max'] = rangeMap['PRS_Min'] = rangeMap["PRS_Sea"] = rangeMap['PRS'];
 
 
-                console.log(rangeMap);
+                // console.log(rangeMap);
 
             rangeMap = rangeMap[this.weatherType];
+            xAxisData = xAxisData[this.weatherType];
 
              weatherData.forEach((d)=>{
             //    console.log(d.Date.split(' '));
                 rangeMap[this.getRange(d[this.weatherType])]++;
                 // totalCounts++;
             });
-
-            for (const range in rangeMap) {
-                if (rangeMap.hasOwnProperty.call(rangeMap, range)) {
-                    
+            xAxisData.forEach(range=>{
+                //  console.log(range);
                    let  value = range.split("~")[1];
                     value = value || range;
                    chartData.push({
                        name:range,
                        value:rangeMap[range],
-                    itemStyle:{
+                        itemStyle:{
                             color:this.getColor(parseFloat(value)),
                         }
                    });
-                }
-            }
-            console.log(chartData);
+            })
+            // for (const range in rangeMap) {
+            //     if (rangeMap.hasOwnProperty.call(rangeMap, range)) {
+            //         console.log(range);
+            //        let  value = range.split("~")[1];
+            //         value = value || range;
+            //        chartData.push({
+            //            name:range,
+            //            value:rangeMap[range],
+            //         itemStyle:{
+            //                 color:this.getColor(parseFloat(value)),
+            //             }
+            //        });
+            //     }
+            // }
+            // console.log(chartData);
             return chartData
         },
          getRange(value){
@@ -315,6 +479,30 @@ export default {
                             value >= 3 ? '4~3' :
                             value >= 2 ? '3~2' :
                             value >= 1 ? '2~1' :
+                            value >= 0 ? '0' : '0'
+                    break;
+                case 'VIS':
+                    range = value == 999999 ? '999999' :
+                            value >= 30 ? '30' :
+                            value >= 20 ? '30~20' :
+                            value >= 10 ? '20~10' :
+                            value >= 5 ? '10~5' :
+                            value >= 3 ? '5~3' :
+                            value >= 2 ? '3~2' :
+                            value >= 1 ? '2~1' :
+                            value >= 0.5 ? '1~0.5' :
+                            value >= 0.2 ? '0.5~0.2' :
+                            value >= 0 ? '0' : '0'
+                    break;
+                case 'CLO_Cov':
+                   range =  value == 100 ? '100' :
+                            value >= 90 ? '90' :
+                            value >= 80 ? '90~80' :
+                            value >= 70 ? '80~70' :
+                            value >= 60 ? '70~60' :
+                            value >= 30 ? '60~30' :
+                            value >= 20 ? '30~20' :
+                            value >= 10 ? '20~10' :
                             value >= 0 ? '0' : '0'
                     break;
                 default:
@@ -409,6 +597,30 @@ export default {
                             value >= 1 ? 'rgba(255,39,2,1)':
                             value >= 0 ? 'rgba(88,0,135,1)':'rgba(88,0,135,1)'
                     break;
+                case 'VIS':
+                    color = value == 999999 ? 'rgba(0,0,0,1)':
+                            value >= 30 ? 'rgba(241,245,253,1)':
+                            value >= 20 ? 'rgba(197,232,252,1)':
+                            value >= 10 ? 'rgba(152,220,253,1)':
+                            value >= 5 ? 'rgba(135,244,89,1)':
+                            value >= 3 ? 'rgba(240,240,56,1)':
+                            value >= 2 ? 'rgba(240,181,114,1)':
+                            value >= 1 ? 'rgba(240,109,55,1)':
+                            value >= 0.5 ? 'rgba(234,50,55,1)':
+                            value >= 0.2 ? 'rgba(162,56,255,1)':
+                            value >= 0 ? 'rgba(130,73,55,1)':'rgba(130,73,55,1)'
+                    break;
+                case 'CLO_Cov':
+                    color = value == 100 ? 'rgba(213,213,205,1)':
+                            value >= 90 ? 'rgba(207,208,202,1)':
+                            value >= 80 ? 'rgba(195,197,196,1)':
+                            value >= 70 ? 'rgba(177,186,185,1)':
+                            value >= 60 ? 'rgba(178,186,185,1)':
+                            value >= 30 ? 'rgba(154,161,160,1)':
+                            value >= 20 ? 'rgba(122,118,101,1)':
+                            value >= 10 ? 'rgba(132,119,70,1)':
+                            value >= 0 ? 'rgba(164,154,118,1)':'rgba(164,154,118,1)'
+                    break;
                 default:
                     break;
             }
@@ -427,19 +639,42 @@ export default {
         weatherType(newWeatherType){
             console.log("pie监听到weatherType更新",'old',this.weatherType,'NEW',newWeatherType);
             switch (newWeatherType) {
-                case 'TEM':
                 case 'TEM_Max':
                 case 'TEM_Min':
-                case 'tigan':
-
-                    this.unit = '℃',
-                    this.zhongwen = '温度'
+                case 'TEM':
+                    this.unit = '℃';
+                    this.zhongwen = '温度';
                     break;
                 case 'RHU':
-                    this.unit = '%',
-                    this.zhongwen = '相对湿度'
+                    this.unit = '%';
+                    this.zhongwen = '相对湿度';
                     break;
-            
+                case 'PRS':
+                case 'PRS_Max':
+                case 'PRS_Min':
+                    this.unit = 'hPa';
+                    this.zhongwen = '气压';
+                    break;
+                case 'PRE_1h':
+                    this.unit = 'mm';
+                    this.zhongwen = '一小时降雨量'
+                    break;
+                case 'windpower':
+                    this.unit = '级';
+                    this.zhongwen = '风力'
+                    break;
+                case 'VIS':
+                    this.unit = 'KM';
+                    this.zhongwen = '能见度'
+                    break;
+                case 'CLO_Cov':
+                    this.unit = '%';
+                    this.zhongwen = '总云量'
+                    break;
+                case 'tigan':
+                     this.unit = '℃';
+                    this.zhongwen = '体感温度'
+                    break;
                 default:
                     break;
             }
