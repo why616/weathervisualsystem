@@ -37,14 +37,17 @@
       
   </div>
   <div class="legend">
-      <Legend :range_color="legend"/>
+      <Legend :range_color="legend" />
   </div>
   <div class="map_axis_msg">
       <pre>地图中心-> Lat（纬度）：{{currentLatLng.lat}} Lng（经度）：{{currentLatLng.lng}}           地图层级->  {{currentZoomLev}}</pre>
   </div>
   <div class="function-bar">
       <el-button type="primary" icon="el-icon-cloudy" @click="changeShowWeatherIcon"  circle></el-button>
-      <el-button type="primary" icon="el-icon-edit" @click="changeSelectProvinceMode" circle></el-button>
+      <el-button type="primary" icon="el-icon-map-location" @click="changeSelectProvinceMode" circle></el-button>
+  </div>
+  <div class="filter-area">
+      <filter-controller :filterList="filterList" @filterControllerCancel="handleBarChartCancelSelect"/>
   </div>
 </div>
 </template>
@@ -55,7 +58,9 @@
 // import 'leaflet-canvas-marker';
 import HeatmapOverlay from "leaflet-heatmap"
 import Legend from "@/components/Legend.vue"
-// import Legend from '../components/legend.vue';
+
+// import Filter from "@/components/Filter.vue"
+import FilterController from '../components/FilterController.vue'
 export default {
     created(){
         // this.createNewWeatherTypeData();
@@ -100,6 +105,7 @@ export default {
         
         console.log("Ready");
         //给Date添加格式化处理
+        
         Date.prototype.format = function(fmt){
             var o = {
             "M+" : this.getMonth()+1,                 //月份
@@ -224,9 +230,9 @@ export default {
             preZoomRange:7,
             showWeatherFlag:false,
             markersFilters:{},
-            showDataFilters:{}
-
-
+            showDataFilters:{},
+            left_1_multFilter:{},
+            filterList:{}
         };
     },
     methods:{
@@ -509,6 +515,8 @@ export default {
                 this.showMarkers = newMarkers;
             else
                 console.log("本次不更新showdata");
+            console.log("筛选器：",this.left_1_multFilter);
+            
             // this.map.flyTo(newMarkers[Math.round(newMarkers.length/2)].getLatLng());
             // console.log("then");
             // this.map.eachLayer(l=>{
@@ -532,7 +540,10 @@ export default {
             let weatherType = this.weatherType
             return (marker)=>{
                 // console.log("该marker的TEM:",marker.TEM,"最大最小值:",max,min);
-                if (marker[weatherType] < max && marker[weatherType] >= min)  return marker;
+                if (marker[weatherType] < max && marker[weatherType] >= min){
+                    //  console.log(`合格: max:${max} min:${min} value:${marker[weatherType]}`);
+                    return marker;
+                }  
                 // else console.log(`不合格: max:${max} min:${min} value:${marker[weatherType]}`);
             }
         },
@@ -736,11 +747,14 @@ export default {
             }
         },
         updateMarkerAndShowDataByProvice(){
+            
             this.removeAllMarkers();
             // this.addFilter(this.markersFilters,this.provinceMarkerFilter,'provinceMarkerFilter');
             // this.addFilter(this.showDataFilters,this.provinceWeatherDataFilter,'provinceWeatherDataFilter');
             this.showCiLayerFromMap();
-            this.addMarkersToCiLayer();
+            this.updateShowMarkers();
+            
+            this.addMarkersToCiLayer(this.markersFilters,this.showMarkers,true);
             this.ciLayerRemoved = false;
             
             this.updateShowData();
@@ -1180,7 +1194,7 @@ export default {
             
             this.provinceSelecterDisable = false;
             this.ciLayerRemoved = false;
-            this.addFilter(this.markersFilters,this.provinceMarkerFilter,'provinceMarkerFilter');
+            // this.addFilter(this.markersFilters,this.provinceMarkerFilter,'provinceMarkerFilter');
             // this.addFilter(this.showDataFilters,this.provinceWeatherDataFilter,'provinceWeatherDataFilter');
             this.updateShowMarkers();
             // this.removeAllMarkers();
@@ -1200,7 +1214,7 @@ export default {
         },
         hideCiLayerFromMap(){
             // this.ciLayerLayersGroup.setZIndex(99);
-            this._data._ciLayerDOM.style.zIndex = '99';
+            this._data._ciLayerDOM.style.zIndex = '-999999';
             
         },
         showCiLayerFromMap(){
@@ -1452,26 +1466,57 @@ export default {
                       min = -999999;
                   }
                 }
+                this.left_1_multFilter[this.weatherType] = this.left_1_multFilter[this.weatherType] || {};
+                let left_1_mult_weatherTypeFilter = this.left_1_multFilter[this.weatherType];
                 // console.log("得到最大最小值：",max,min);
                 //让Map执行removeAllMarkers
                 this.removeAllMarkers();
                 //对showMarkers执行addMarkersToCiLayer操作
                 if(this.provinceSelect == '全国' && this.map.getZoom()>5)
                     this.map.setZoom(6);
+                left_1_mult_weatherTypeFilter[this.weatherType+'-'+range] = this.rangeMarkerHighLevFilter(max,min);
+                let filterList = [];
+                // for (const filter in this.left_1_multFilter) {
+                //     if (Object.hasOwnProperty.call(this.left_1_multFilter, filter)) {
+                //         this.left_1_multFilter[filter];
+                        
+                //     }
+                // }
+                for(const filter in left_1_mult_weatherTypeFilter){
+                   if(left_1_mult_weatherTypeFilter[filter]){
+                    //    console.log("push",this.left_1_multFilter[filter]);
+                       filterList.push(left_1_mult_weatherTypeFilter[filter]);
 
+                   } 
+
+                }
+                    // console.log(filterList);
+                
                 //这里最好加上来源名作为name，比如左固定的筛选
-                this.addFilter(this.markersFilters,this.rangeMarkerHighLevFilter(max,min),'rangeMarkerHighLevFilterBy'+`${chartOrigin}`);
+                this.addFilter(this.markersFilters,this.multiFilter(...filterList),'rangeMarkerHighLevFilterBy'+this.weatherType+`From${chartOrigin}`);
                 console.log("添加rangeMarkerHighLevFilter筛选器");
                 this.addMarkersToCiLayer(this.markersFilters,this.showMarkers,true);
+                this.createNewFliterList();
+
                 //不需要改变showData
         },
-        handleBarChartCancelSelect({chartOrigin}){
+        handleBarChartCancelSelect({cancelRange,chartOrigin}){
             this.removeAllMarkers();
             //对showMarkers执行addMarkersToCiLayer操作
                 console.log("移除rangeMarkerHighLevFilter筛选器");
+            let filterList = [];
+            let left_1_mult_weatherTypeFilter = this.left_1_multFilter[this.weatherType];
 
-            this.removeFilter(this.markersFilters,`rangeMarkerHighLevFilterBy${chartOrigin}`);
-            this.addMarkersToCiLayer(undefined,this.showMarkers,true);
+            left_1_mult_weatherTypeFilter[this.weatherType+'-'+cancelRange] = undefined;
+            console.log("取消的key",this.weatherType+'-'+cancelRange);
+            for(const filter in left_1_mult_weatherTypeFilter){
+                left_1_mult_weatherTypeFilter[filter] && filterList.push(left_1_mult_weatherTypeFilter[filter]);
+            }
+            this.addFilter(this.markersFilters,this.multiFilter(...filterList),'rangeMarkerHighLevFilterBy'+this.weatherType+`From${chartOrigin}`);
+            // this.removeFilter(this.markersFilters,`rangeMarkerHighLevFilterBy${this.weatherType}From${chartOrigin}`);
+            this.addMarkersToCiLayer(this.markersFilters,this.showMarkers,true);
+            this.createNewFliterList();
+
         },
         changeShowWeatherType(){
             this.removeAllMarkers();
@@ -1770,7 +1815,53 @@ export default {
             //不添加上地图
             this.addMarkersToCiLayer(undefined,undefined,false,true);
 
+        },
+        multiFilter(...filters){
+            return (marker)=>{
+                // console.log("MultFilter",filters);
+                if(filters.length == 0) return marker;
+                for (let index = 0; index < filters.length; index++) {
+                    if(filters[index](marker)){
+                        // console.log("MultFilter觉得合格",marker.TEM);
+                        return marker ;
+                    } 
+                }
+                return false;
+            }
+           
+        },
+        createNewFliterList(){
+            let filterList = {
+                left_1_multFilter:{
+                    chartOrigin:'left_1_multFilter',
+                    filters:[]
+                }
+            };
+
+            let new_left_1_multFilter = this.left_1_multFilter;
+            for (const weatherType in new_left_1_multFilter) {
+                if (Object.hasOwnProperty.call(new_left_1_multFilter, weatherType)) {
+                    let filters = new_left_1_multFilter[weatherType];
+                    for (const filter in filters) {
+                        if (Object.hasOwnProperty.call(filters, filter) && filters[filter]) {
+                            let filterName = filter.split('-');
+                            let filterMsg = {};
+                            filterMsg.type = filterName[0];
+                            filterMsg.range = filterName[1];
+                            filterMsg.chartOrigin = "left_1_multFilter";
+                            filterMsg.key = 'left_1_multFilter-'+filter;
+                            filterList.left_1_multFilter.filters.push(filterMsg);
+
+                        }
+                    }                    
+                }
+            }
+            this.filterList = filterList;      
+            console.log("map里，filterList",filterList);
+
         }
+            
+        
         // handleIconSizeByZoomLev(currZoomLev){
         //     if(this.preZoomRange == 7){
         //         if(currZoomLev <7){
@@ -1799,8 +1890,11 @@ export default {
         //     })
         // }
     },
+    
     components:{
         Legend,
+        // Filter
+        FilterController
     },
     
     
@@ -1815,6 +1909,7 @@ export default {
     z-index: 101;
 }
 .map-app{
+    overflow: hidden;
     height: 100%;
     position: relative;
     #map{
@@ -1862,8 +1957,13 @@ export default {
         right: 5px;
         
         z-index: 2001;
-
+    }
+    .filter-area{
+        position: absolute;
+        top:70px;
+        right: 5px;
+        z-index: 2001;
+        
     }
 }
-
 </style>

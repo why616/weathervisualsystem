@@ -17,7 +17,7 @@ export default {
     data(){
         return {
             echart:undefined,
-            selectRange:'',
+            selectRange:{},
             unit:'℃',
             zhongwen:'温度'
 
@@ -30,13 +30,21 @@ export default {
             if(!this.$refs.chart) return;
             this.echart = echarts.init(this.$refs.chart);
             this.echart.on('click',(e)=>{
-                if(this.selectRange == e.name){
-                    this.$bus.$emit('bar-chart-cancel-select',{chartOrigin:'static'});
-                    this.selectRange = '';
+                if(this.selectRange[e.name]){
+                    this.$bus.$emit('bar-chart-cancel-select',{chartOrigin:'left_1_multFilter',cancelRange:e.name});
+                    this.selectRange[e.name] = undefined;
                 }else{
-                    this.selectRange = e.name;
-                    this.$bus.$emit('bar-chart-select',{range:e.name,chartOrigin:'static'});
+                    this.selectRange[e.name] = true;
+                    this.$bus.$emit('bar-chart-select',{range:e.name,chartOrigin:'left_1_multFilter'});
+                    
                 }
+                // if(this.selectRange == e.name){
+                //     this.$bus.$emit('bar-chart-cancel-select',{chartOrigin:'static'});
+                //     this.selectRange = '';
+                // }else{
+                //     this.selectRange = e.name;
+                //     this.$bus.$emit('bar-chart-select',{range:e.name,chartOrigin:'static'});
+                // }
             })
             
         },
