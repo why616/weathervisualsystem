@@ -631,10 +631,10 @@ export default {
         },
     },
     watch:{
-        showData(newShowData){
+        provinceData(newProvinceData){
             console.log("bar监听到showData更新");
             if(this.echart){
-                let res = this.dealWeatherDataToEchartData(newShowData);
+                let res = this.dealWeatherDataToEchartData(newProvinceData);
                 // console.log(res);
                 this.renderChart(res);
             }
@@ -682,7 +682,7 @@ export default {
                     break;
             }
             if (this.echart) {
-                let res = this.dealWeatherDataToEchartData(this.showData);
+                let res = this.dealWeatherDataToEchartData(this.provinceData);
                 this.renderChart(res);
             }
 
@@ -690,7 +690,7 @@ export default {
     },
     computed:{
         ...mapState({
-            showData: state => state.showData,
+            provinceData: state => state.provinceData,
             weatherType: state => state.weatherType
         })
     }

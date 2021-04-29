@@ -2,6 +2,9 @@
   <div id="app">
     <div class="center-map">
       <Map/>
+      <div class="line-chart-area">
+        <pile-bar-chart/>
+      </div>
     </div>
     <div class="left-chart">
       <div class="chart-item">
@@ -11,25 +14,25 @@
         <pie-chart/>
       </div>
       <div class="chart-item">
-        <Zzt/>
+        <any-chart chartOrigin="left_2_multFilter"/>
       </div>
       
     </div>
     
     <div class="right-chart">
-      <!-- <div class="chart-item">
-        <Zzt/>
+      <div class="chart-item">
+       <any-chart chartOrigin="right_1_multFilter"/>
       </div>
       <div class="chart-item">
-        <Zzt/>
+        <any-chart chartOrigin="right_2_multFilter"/>
       </div>
       <div class="chart-item">
-        <Zzt/>
-      </div> -->
-    </div>
+        <any-chart chartOrigin="right_3_multFilter"/>
+      </div>
+    </div> 
     <!-- <div class="zzt">
       <Zzt/>
-    </div> -->
+    </div>-->
 
   </div>
 </template>
@@ -40,6 +43,8 @@ import Map from './views/Map.vue';
 import Zzt from './components/zhuzhuangtu.vue'
 import BarChart from "@/components/charts/BarChart.vue"
 import PieChart from "@/components/charts/PieChart.vue"
+import AnyChart from './components/charts/AnyChart.vue';
+import PileBarChart from './components/charts/PileBarChart.vue';
 // import PieChart from './components/charts/PieChart.vue';
 // import BarChart from './components/charts/BarChart.vue';
 
@@ -59,6 +64,8 @@ export default {
       Zzt,
       BarChart,
       PieChart,
+      AnyChart,
+      PileBarChart,
     // PieChart
     // BarChart
   }
@@ -73,6 +80,7 @@ export default {
   .left-chart{
     order: 0;
     width:25%;
+    
     .chart-item{
       width: 100%;
       height: 33.3%;
@@ -80,7 +88,11 @@ export default {
   }
   .center-map{
     order: 1;
-    width: 50%;
+    flex-grow: 1;
+    .line-chart-area{
+      height: 33.3%;
+    }
+    // width: 50%;
   }
   .right-chart{
     order: 2;

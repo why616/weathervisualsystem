@@ -5,7 +5,7 @@
              <span>{{title}}过滤器</span>
          </div>
          <div class="content">
-             <div class="filter-item" v-for="i in items" :key="i.key" @click="clickToCancelFilter(i.chartOrigin,i.range)">
+             <div class="filter-item" v-for="i in items" :key="i.key" @click="clickToCancelFilter(i.chartOrigin,i.range,i.type)">
                  <span>{{i.type}} </span><span>{{i.range}} </span><span>选择</span>
              </div>
          </div>
@@ -18,24 +18,29 @@ export default {
  props:['filterList'],
  mounted(){
     //  console.log(this.filterList);
+    let newList = this.filterList
+     console.log(newList,newList.chartOrigin);
+        this.title = newList.chartOrigin;
+        this.items = newList.filters;
  },
  data(){
      return{
          title:'',
-         items:[]
+         items:[],
+         
      }
  },
  methods:{
-     clickToCancelFilter(chartOrigin,cancelRange){
+     clickToCancelFilter(chartOrigin,cancelRange,weatherType){
          console.log(chartOrigin,cancelRange);
-        this.$emit('filterControllerCancel',{chartOrigin,cancelRange});
+        this.$emit('filterControllerCancel',{chartOrigin,cancelRange,weatherType});
      }
  },
  watch:{
      filterList(newList){
-        //  console.log(newList);
-        this.title = newList.left_1_multFilter.chartOrigin;
-        this.items = newList.left_1_multFilter.filters;
+         console.log(newList,newList.chartOrigin);
+        this.title = newList.chartOrigin;
+        this.items = newList.filters;
         
      }
  }

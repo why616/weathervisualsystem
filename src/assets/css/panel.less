@@ -1,0 +1,86 @@
+.leaflet-popup-content{
+    margin: 0;
+    min-width: 316px;
+}
+.weather-panel{
+    border-radius: 10px;
+    width: 100%; 
+    box-shadow: 0px 0px 15px rgba(0,0,0,0.3);
+    height: 140px;
+    .weather-panel-title{
+        border-top-left-radius: inherit;
+        border-top-right-radius: inherit;
+        height: 25%;
+        line-height: 40px;
+        padding: 0 10px;
+        font-size: 16px;
+        color: #fff;
+        background-color: #4f575c;
+        text-align: center;
+        span:hover{
+            text-shadow: 0 5px 8px rgba(0,0,0,0.8),0 5px 8px rgba(0,0,0,0.8),0 5px 8px rgba(0,0,0,0.8);
+
+            cursor: pointer;
+
+        }
+    }
+    .weather-panel-content{
+        height: 75%;
+        .weather-panel-content-line{
+            display: flex;
+            /* justify-content: space-around; */
+            height: 50%;
+            padding: 0 10px;
+            .item{
+                flex-basis: 0;
+                width:0;
+                flex-grow: 1;
+                padding: 6px 5px;
+                text-align: center;
+                font-size: 13px;
+                .img{
+                    background-size: contain;
+                    background-repeat: no-repeat;
+                    background-position: center;
+                    height: calc(100% - 13px);
+                }
+            }
+        }
+    }
+
+}
+.qiwen{
+    background-image: url("/panelIcon/qiwen.png");
+}
+.gaowen{
+    background-image: url("/panelIcon/gaowen.png");
+}
+.diwen{
+    background-image: url("/panelIcon/diwen.png");
+}
+.tigan{
+    background-image: url("/panelIcon/tigan.png");
+}
+.rhu{
+    background-image: url("/panelIcon/rhu.png");
+}
+.prs{
+    background-image: url("/panelIcon/prs.png");
+
+}
+.pre{
+    background-image: url("/panelIcon/pre.png");
+
+}
+.windpower{
+    background-image: url("/panelIcon/windpower.png");
+
+}
+.vis{
+    background-image: url("/panelIcon/vis.png");
+
+}   
+.clo-cov{
+    background-image: url("/panelIcon/clo_cov.png");
+
+}

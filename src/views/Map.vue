@@ -4,7 +4,7 @@
      
   </div>
   <div class="restrict_select">
-    <el-select v-model="provinceSelect" @change="updateMarkerAndShowDataByProvice"  label="全国" placeholder="请选择" :disabled="provinceSelecterDisable">
+    <el-select v-model="provinceSelect" @change="updateMarkerAndprovinceDataByProvice"  label="全国" placeholder="请选择" :disabled="provinceSelecterDisable">
       <el-option
         v-for="item in proviceList"
         :key="item.value"
@@ -21,7 +21,7 @@
       :editable="false"
       :clearable="false"
       value-format="yyyy-MM-dd HH:mm:ss"
-      @change="updateMarkerAndShowDataByDate"
+      @change="updateMarkerAndprovinceDataByDate"
       >
     </el-date-picker>
      <el-select v-model="weatherType" @change="changeShowWeatherType" label="温度" placeholder="请选择">
@@ -47,7 +47,7 @@
       <el-button type="primary" icon="el-icon-map-location" @click="changeSelectProvinceMode" circle></el-button>
   </div>
   <div class="filter-area">
-      <filter-controller :filterList="filterList" @filterControllerCancel="handleBarChartCancelSelect"/>
+      <filter-controller v-for="f in filterList" :filterList="f" @filterControllerCancel="handleBarChartCancelSelect" :key="f.key" />
   </div>
 </div>
 </template>
@@ -58,7 +58,7 @@
 // import 'leaflet-canvas-marker';
 import HeatmapOverlay from "leaflet-heatmap"
 import Legend from "@/components/Legend.vue"
-
+import "../../src/assets/css/panel.less"
 // import Filter from "@/components/Filter.vue"
 import FilterController from '../components/FilterController.vue'
 export default {
@@ -71,6 +71,8 @@ export default {
         //设置chart传递的事件的监听
         this.$bus.$on('bar-chart-select',this.handleBarChartSelect);
         this.$bus.$on('bar-chart-cancel-select',this.handleBarChartCancelSelect);
+        this.$bus.$on('mid-pileBar-select',this.handleMidPileBarSelect);
+
         //请求站点数据       
         this.$axios.get("http://localhost:8080/station.json").then(({data})=>{
             // console.log(data);
@@ -159,9 +161,11 @@ export default {
             //上点的图标
             iconList:{},
             //请求到的数据与当前展示的数据
-            showData:{},
+            provinceData:{},
+            showData:[],
             requestData:{},
             //地图上所有的点，要显示的点将在所有点中进行筛选后形成
+            provinceMarkers:[],
             showMarkers:[],
             markers:[],
             //本地存储的站点信息
@@ -175,7 +179,7 @@ export default {
             pickerOption:{
                 disabledDate(time) {
                     let start = new Date(2021,2,10,0,0,0);
-                    let end = new Date(2021,3,9,12,0,0);
+                    let end = new Date(2021,3,23,12,0,0);
                     // console.log(+start);
                     return time.getTime() < start || time.getTime() > end ;
                 },
@@ -230,9 +234,18 @@ export default {
             preZoomRange:7,
             showWeatherFlag:false,
             markersFilters:{},
-            showDataFilters:{},
-            left_1_multFilter:{},
-            filterList:{}
+            provinceDataFilters:{},
+            chartFilterList:{
+                left_1_multFilter:{},
+                left_2_multFilter:{},
+                right_1_multFilter:{},
+                right_2_multFilter:{},
+                right_3_multFilter:{},
+                mid_pileBar_multFilter:{}
+            },
+            filterList:[],
+            lastDate:''
+
         };
     },
     methods:{
@@ -304,7 +317,7 @@ export default {
             // console.log(geoJson);
            data = this.stationMappingWeatherData(data);
            this.updateRequestData(data);
-           this.updateShowData();
+           this.updateProvinceData();
            this.createMarkers(data);
            this.addProvincesGeoJsons(geoJson);
            this.updateGeoJson();
@@ -328,11 +341,11 @@ export default {
            { // this.$axios.get('/querysql',{params}).then( res => {
             //     let {data} = res;
             //     // console.log("获取到的",data);
-            //     // this.showData = data;
+            //     // this.provinceData = data;
                 
             //     let heatData = this.stationMappingWeatherData(data);
             //     this.requestData = heatData;
-            //     this.showData = heatData;
+            //     this.provinceData = heatData;
             //     let markers = heatData.map(s => {
             //         // console.log(s);
             //         //  if(s.stationType != "基准站") return;
@@ -383,9 +396,14 @@ export default {
                 'lng',
                 'lat' 
             ];
+            // let id_province = [
+            //      'stationId',
+            //      'province',
+            // ]
             let newStations = this.copyStationsRestrictAttr(...attrArr);
+            // let newStations1 = this.copyStationsRestrictAttr(...id_province);
             let t = 0;
-            // console.log("newS",newStations);
+            // console.log("id_province",JSON.stringify(newStations1));
             // console.log("data",data);
             let lostDataStationsErrMsg = ['<div style="width:103%;max-height:210px;overflow:auto;padding-right:11px">'];
             newStations.forEach( s =>{
@@ -476,8 +494,8 @@ export default {
             return newStations;
         },
         addMarkersToCiLayer(filtersFn,baseMarkers,keepShowMarker,dontAdd){
-            keepShowMarker = !keepShowMarker;
-            dontAdd = !dontAdd;
+            // keepShowMarker = !keepShowMarker;
+            // dontAdd = !dontAdd;
             // console.log("pre");
             // this.map.eachLayer(l=>{
             //     console.log(l);
@@ -506,15 +524,17 @@ export default {
             // this.ciLayer.bringToFront();
             // console.log(this.ciLayer);
             
-            if(dontAdd){
+            if(!dontAdd){
                 this.ciLayer.addLayers(newMarkers);
+                this.showMarkers = newMarkers;
+                this.$store.commit('updateShowMarkers',newMarkers);
                 console.log("本次将添加点",newMarkers);
             } 
             else console.log("本次不会添加点");
-            if(keepShowMarker)
-                this.showMarkers = newMarkers;
+            if(!keepShowMarker)
+                this.provinceMarkers = newMarkers;
             else
-                console.log("本次不更新showdata");
+                console.log("本次不更新provincedata");
             console.log("筛选器：",this.left_1_multFilter);
             
             // this.map.flyTo(newMarkers[Math.round(newMarkers.length/2)].getLatLng());
@@ -532,12 +552,12 @@ export default {
             
         },
         provinceWeatherDataFilter(data){
-                // console.log(this.showData);
+                // console.log(this.provinceData);
             if(data.province == this.provinceSelect 
                          || this.provinceSelect == '全国') return data;
         },
-        rangeMarkerHighLevFilter(max,min){
-            let weatherType = this.weatherType
+        rangeMarkerHighLevFilter(max,min,weatherType){
+            weatherType = weatherType || this.weatherType;
             return (marker)=>{
                 // console.log("该marker的TEM:",marker.TEM,"最大最小值:",max,min);
                 if (marker[weatherType] < max && marker[weatherType] >= min){
@@ -585,8 +605,8 @@ export default {
         updateRequestData(reqData){
             this.requestData = reqData;
         },
-        updateShowData(filtersFn,baseWeatherData){
-            let newShowData = [];
+        updateProvinceData(filtersFn,baseWeatherData){
+            let newProvinceData = [];
 
             filtersFn = filtersFn || {'provinceWeatherDataFilter':this.provinceWeatherDataFilter};
             
@@ -602,10 +622,10 @@ export default {
                        if(!filtersFn[filter](data)) return ; 
                     }
                 }
-                newShowData.push(data);
+                newProvinceData.push(data);
             });
-            this.$store.commit('updateShowData',newShowData);
-            this.showData = newShowData;
+            this.$store.commit('updateProvinceData',newProvinceData);
+            this.provinceData = newProvinceData;
         },
         createMarkers(data,orderedWeatherType){
             let markers = data.map(s => {
@@ -661,24 +681,62 @@ export default {
                         break;
                 }
                 marker.bindPopup(`
-                    <p>站点：${s.stationName}</p>
-                    <p>省份：${s.province}</p>
-                    <p>时间：${s.Date}</p>
-                    <p>温度：${s.TEM}</p>
-                    <p>最高温度：${s.TEM_Max}</p>
-                    <p>最低温度：${s.TEM_Min}</p>
-                    <p>相对湿度：${s.RHU}</p>
-                    <p>水汽压：${s.VAP}</p>
-                    <p>一小时降雨量：${s.PRE_1h}</p>
-                    <p>气压：${s.PRS}</p>
-                    <p>体感温度：${s.tigan}</p>
-                    <p>能见度：${s.VIS}</p>
-                    <p>现在天气：${weather_now}</p>
-                    <p>天气code：${s.WEP_Now}</p>
+                    <div class="weather-panel">
+                        <div class="weather-panel-title">
+                            <span>${s.province}省${s.stationName}站（${s.Date}）</span>
+                        </div>
+                        <div class="weather-panel-content">
+                            <div class="weather-panel-content-line">
+                                <div class="item">  
+                                    <div class="img qiwen"></div>
+                                    <span>${parseFloat(s.TEM).toFixed(1)==999999.0?'缺测':parseFloat(s.TEM).toFixed(1)}℃</span>
+                                </div>
+                                <div class="item ">
+                                    <div class="img gaowen"></div>
+                                    <span>${parseFloat(s.TEM_Max).toFixed(1)==999999.0?'缺测':parseFloat(s.TEM_Max).toFixed(1)}℃</span>
+                                </div>
+                                <div class="item ">
+                                    <div class="img diwen"></div>
+                                    <span>${parseFloat(s.TEM_Min).toFixed(1)==999999.0?'缺测':parseFloat(s.TEM_Min).toFixed(1)}℃</span>
+                                </div>
+                                <div class="item">
+                                    <div class="img tigan"></div>
+                                    <span>${parseFloat(s.tigan).toFixed(1)==999999.0?'缺测':parseFloat(s.tigan).toFixed(1)}℃</span>
+                                </div>
+                                <div class="item">
+                                    <div class="img rhu"></div>
+                                    <span>${parseFloat(s.RHU).toFixed(1)==999999.0?'缺测':parseFloat(s.RHU).toFixed(1)}%</span>
+                                </div>
+                            </div>
+                            <div class="weather-panel-content-line">  
+                                <div class="item"> 
+                                    <div class="img prs"></div>
+                                    <span>${parseFloat(s.PRS).toFixed(0)==999999.0?'缺测':parseFloat(s.PRS).toFixed(0)}hPa </span>
+                                </div>
+                                <div class="item">
+                                    <div class="img pre"></div>
+                                    <span> ${parseFloat(s.PRE_1h).toFixed(1)==999999.0?'缺测':parseFloat(s.PRE_1h).toFixed(1)}mm</span>
+                                </div>
+                                <div class="item">
+                                    <div class="img windpower"></div>
+                                    <span>${parseFloat(s.windpower).toFixed(0)==999999.0?'缺测':parseFloat(s.windpower).toFixed(0)}级</span>
+                                </div>
+                                <div class="item">
+                                    <div class="img vis"></div>
+                                    <span>${parseFloat(s.VIS).toFixed(1)==999999.0?'缺测':parseFloat(s.VIS).toFixed(1)}KM</span>
+                                </div>
+                                <div class="item">
+                                    <div class="img clo-cov"></div>
+                                    <span>${parseFloat(s.CLO_Cov).toFixed(0)==999999.0?'缺测':parseFloat(s.CLO_Cov).toFixed(0)}%</span>
+                                </div>
+                            
+                            </div>
+                        </div>
+                    </div>
                     `
                 );
                 if(!weather_now) console.log(`${s.province} ${s.stationName} ${s.WEP_Now}`)
-                
+                 
                 //在这里附上值，供Filter筛选
                 marker.province = s.province;
                 marker.TEM = s.TEM;
@@ -702,11 +760,12 @@ export default {
             }); 
             this.markers = markers;
         },
-        async updateMarkerAndShowDataByDate(){
-            this.dateSelect = this.dateSelect.substring(0,13) + ':00:00';
-            console.log(typeof this.dateSelect);
+        async updateMarkerAndprovinceDataByDate(date){
+            date = date || this.dateSelect.substring(0,13) + ':00:00';
+            this.dateSelect = date;
+            // console.log(typeof this.dateSelect);
             let params = {
-                date:this.dateSelect
+                date
             }
             try {
                 this.fullscreenLoading = true;
@@ -718,17 +777,17 @@ export default {
                     this.createMarkers(data,'WEP_Now');
                 else
                     this.createMarkers(data);
-                //    this.updateMarkerAndShowDataByProvice();
+                //    this.updateMarkerAndprovinceDataByProvice();
                 this.clearGeoJsonLayer();
                 this.updateGeoJson(this.weatherType);
                 this.addChinaGeoJson();
                 // this.addFilter(this.markersFilters,this.provinceMarkerFilter,'provinceMarkerFilter');
-                // this.addFilter(this.showDataFilters,this.provinceWeatherDataFilter,'provinceWeatherDataFilter');
+                // this.addFilter(this.provinceDataFilters,this.provinceWeatherDataFilter,'provinceWeatherDataFilter');
                 if(!this.ciLayerRemoved){
-                    this.updateShowMarkers();
-                    this.addMarkersToCiLayer(this.markersFilters,this.showMarkers,true);
+                    this.updateprovinceMarkers();
+                    this.addMarkersToCiLayer(this.markersFilters,this.provinceMarkers,true);
                 }
-                this.updateShowData();
+                this.updateProvinceData();
                 this.fullscreenLoading = false;
                 this.$message({
                     message: '日期更新完成',
@@ -746,23 +805,23 @@ export default {
                 });
             }
         },
-        updateMarkerAndShowDataByProvice(){
+        updateMarkerAndprovinceDataByProvice(){
             
             this.removeAllMarkers();
             // this.addFilter(this.markersFilters,this.provinceMarkerFilter,'provinceMarkerFilter');
-            // this.addFilter(this.showDataFilters,this.provinceWeatherDataFilter,'provinceWeatherDataFilter');
+            // this.addFilter(this.provinceDataFilters,this.provinceWeatherDataFilter,'provinceWeatherDataFilter');
             this.showCiLayerFromMap();
-            this.updateShowMarkers();
+            this.updateprovinceMarkers();
             
-            this.addMarkersToCiLayer(this.markersFilters,this.showMarkers,true);
+            this.addMarkersToCiLayer(this.markersFilters,this.provinceMarkers,true);
             this.ciLayerRemoved = false;
             
-            this.updateShowData();
+            this.updateProvinceData();
             if(this.provinceSelect != '全国')
             this.moveMap();
         },
         moveMap(latlng){
-            latlng = latlng || this.showMarkers[Math.round(this.showMarkers.length/2)].getLatLng();
+            latlng = latlng || this.provinceMarkers[Math.round(this.provinceMarkers.length/2)].getLatLng();
             this.map.flyTo(latlng);
         },
         removeAllMarkers(markers){
@@ -1195,11 +1254,11 @@ export default {
             this.provinceSelecterDisable = false;
             this.ciLayerRemoved = false;
             // this.addFilter(this.markersFilters,this.provinceMarkerFilter,'provinceMarkerFilter');
-            // this.addFilter(this.showDataFilters,this.provinceWeatherDataFilter,'provinceWeatherDataFilter');
-            this.updateShowMarkers();
+            // this.addFilter(this.provinceDataFilters,this.provinceWeatherDataFilter,'provinceWeatherDataFilter');
+            this.updateprovinceMarkers();
             // this.removeAllMarkers();
-            this.addMarkersToCiLayer(this.markersFilters,this.showMarkers,true);
-            this.updateShowData();
+            this.addMarkersToCiLayer(this.markersFilters,this.provinceMarkers,true);
+            this.updateProvinceData();
             this.showCiLayerFromMap();
             // this.map.setMaxBounds(e.target.getBounds());
             let center = e.target.feature.properties.center;
@@ -1441,7 +1500,8 @@ export default {
             this.iconList[url] = icon;
             return icon;
         },
-        handleBarChartSelect({range,chartOrigin}){
+        handleBarChartSelect({range,chartOrigin,weatherType}){
+            weatherType = weatherType || this.weatherType;
             // console.log("得到范围：",range);
             let selectTEMRange = range.split("~");
             let max,min;
@@ -1466,15 +1526,16 @@ export default {
                       min = -999999;
                   }
                 }
-                this.left_1_multFilter[this.weatherType] = this.left_1_multFilter[this.weatherType] || {};
-                let left_1_mult_weatherTypeFilter = this.left_1_multFilter[this.weatherType];
+
+                this.chartFilterList[chartOrigin][weatherType] = this.chartFilterList[chartOrigin][weatherType] || {};
+                let left_1_mult_weatherTypeFilter = this.chartFilterList[chartOrigin][weatherType];
                 // console.log("得到最大最小值：",max,min);
                 //让Map执行removeAllMarkers
                 this.removeAllMarkers();
-                //对showMarkers执行addMarkersToCiLayer操作
+                //对provinceMarkers执行addMarkersToCiLayer操作
                 if(this.provinceSelect == '全国' && this.map.getZoom()>5)
                     this.map.setZoom(6);
-                left_1_mult_weatherTypeFilter[this.weatherType+'-'+range] = this.rangeMarkerHighLevFilter(max,min);
+                left_1_mult_weatherTypeFilter[weatherType+'&'+range] = this.rangeMarkerHighLevFilter(max,min,weatherType);
                 let filterList = [];
                 // for (const filter in this.left_1_multFilter) {
                 //     if (Object.hasOwnProperty.call(this.left_1_multFilter, filter)) {
@@ -1493,28 +1554,29 @@ export default {
                     // console.log(filterList);
                 
                 //这里最好加上来源名作为name，比如左固定的筛选
-                this.addFilter(this.markersFilters,this.multiFilter(...filterList),'rangeMarkerHighLevFilterBy'+this.weatherType+`From${chartOrigin}`);
+                this.addFilter(this.markersFilters,this.multiFilter(...filterList),'rangeMarkerHighLevFilterBy'+weatherType+`From${chartOrigin}`);
                 console.log("添加rangeMarkerHighLevFilter筛选器");
-                this.addMarkersToCiLayer(this.markersFilters,this.showMarkers,true);
+                this.addMarkersToCiLayer(this.markersFilters,this.provinceMarkers,true);
                 this.createNewFliterList();
 
-                //不需要改变showData
+                //不需要改变provinceData
         },
-        handleBarChartCancelSelect({cancelRange,chartOrigin}){
+        handleBarChartCancelSelect({cancelRange,chartOrigin,weatherType}){
+            weatherType = weatherType || this.weatherType;
             this.removeAllMarkers();
-            //对showMarkers执行addMarkersToCiLayer操作
+            //对provinceMarkers执行addMarkersToCiLayer操作
                 console.log("移除rangeMarkerHighLevFilter筛选器");
             let filterList = [];
-            let left_1_mult_weatherTypeFilter = this.left_1_multFilter[this.weatherType];
+            let left_1_mult_weatherTypeFilter = this.chartFilterList[chartOrigin][weatherType];
 
-            left_1_mult_weatherTypeFilter[this.weatherType+'-'+cancelRange] = undefined;
-            console.log("取消的key",this.weatherType+'-'+cancelRange);
+            left_1_mult_weatherTypeFilter[weatherType+'&'+cancelRange] = undefined;
+            console.log("取消的key",weatherType+'&'+cancelRange);
             for(const filter in left_1_mult_weatherTypeFilter){
                 left_1_mult_weatherTypeFilter[filter] && filterList.push(left_1_mult_weatherTypeFilter[filter]);
             }
-            this.addFilter(this.markersFilters,this.multiFilter(...filterList),'rangeMarkerHighLevFilterBy'+this.weatherType+`From${chartOrigin}`);
+            this.addFilter(this.markersFilters,this.multiFilter(...filterList),'rangeMarkerHighLevFilterBy'+weatherType+`From${chartOrigin}`);
             // this.removeFilter(this.markersFilters,`rangeMarkerHighLevFilterBy${this.weatherType}From${chartOrigin}`);
-            this.addMarkersToCiLayer(this.markersFilters,this.showMarkers,true);
+            this.addMarkersToCiLayer(this.markersFilters,this.provinceMarkers,true);
             this.createNewFliterList();
 
         },
@@ -1525,8 +1587,8 @@ export default {
             else
                 this.createMarkers(this.requestData);
             // this.addFilter(this.markersFilters,this.provinceMarkerFilter,'provinceMarkerFilter');
-            this.updateShowMarkers();
-            this.addMarkersToCiLayer(this.markersFilters,this.showMarkers,true);
+            this.updateprovinceMarkers();
+            this.addMarkersToCiLayer(this.markersFilters,this.provinceMarkers,true);
             this.updateLegend();
             this.clearGeoJsonLayer();
             this.updateGeoJson(this.weatherType);
@@ -1782,8 +1844,8 @@ export default {
                 // this.markers.forEach(m=>{
                 //     m.setIcon(this.getIcon(m[this.weatherType]));
                 // })
-                this.updateShowMarkers();
-                this.addMarkersToCiLayer(this.markersFilters,this.showMarkers,true);
+                this.updateprovinceMarkers();
+                this.addMarkersToCiLayer(this.markersFilters,this.provinceMarkers,true);
 
                 this.showWeatherFlag = false;
             }else{
@@ -1793,9 +1855,9 @@ export default {
                 // })
                 this.createMarkers(this.requestData,'WEP_Now');
                 //只依赖省选择更新showMarker
-                this.updateShowMarkers();
+                this.updateprovinceMarkers();
                 //根据其他筛选器进一步筛选，对showMarker处理，并且不改变showmarker
-                this.addMarkersToCiLayer(this.markersFilters,this.showMarkers,true);
+                this.addMarkersToCiLayer(this.markersFilters,this.provinceMarkers,true);
                 this.showWeatherFlag = true;
 
             }
@@ -1808,10 +1870,10 @@ export default {
         removeFilter(filter,name){
             filter[name] = undefined;
         },
-        updateShowMarkers(){
+        updateprovinceMarkers(){
             //用省过滤器筛选
             //对所有markers操作
-            //更新showMarkers
+            //更新provinceMarkers
             //不添加上地图
             this.addMarkersToCiLayer(undefined,undefined,false,true);
 
@@ -1832,33 +1894,104 @@ export default {
         },
         createNewFliterList(){
             let filterList = {
-                left_1_multFilter:{
-                    chartOrigin:'left_1_multFilter',
-                    filters:[]
-                }
+            //    left_1_multFilter: {
+            //         chartOrigin:'left_1_multFilter',
+            //         filters:[]
+            //     },
             };
-
-            let new_left_1_multFilter = this.left_1_multFilter;
-            for (const weatherType in new_left_1_multFilter) {
-                if (Object.hasOwnProperty.call(new_left_1_multFilter, weatherType)) {
-                    let filters = new_left_1_multFilter[weatherType];
-                    for (const filter in filters) {
-                        if (Object.hasOwnProperty.call(filters, filter) && filters[filter]) {
-                            let filterName = filter.split('-');
-                            let filterMsg = {};
-                            filterMsg.type = filterName[0];
-                            filterMsg.range = filterName[1];
-                            filterMsg.chartOrigin = "left_1_multFilter";
-                            filterMsg.key = 'left_1_multFilter-'+filter;
-                            filterList.left_1_multFilter.filters.push(filterMsg);
-
+            let chartFilterList = this.chartFilterList;
+            for (const chartFliterName in chartFilterList) {
+                if (Object.hasOwnProperty.call(chartFilterList, chartFliterName)) {
+                   let chartFilter = chartFilterList[chartFliterName];
+                    for (const weatherType in chartFilter) {
+                        if (Object.hasOwnProperty.call(chartFilter, weatherType)) {
+                            let filters = chartFilter[weatherType];
+                            for (const filter in filters) {
+                                if (Object.hasOwnProperty.call(filters, filter) && filters[filter]) {
+                                    let filterName = filter.split('&');
+                                    let filterMsg = {};
+                                    filterMsg.type = filterName[0];
+                                    filterMsg.range = filterName[1];
+                                    filterMsg.chartOrigin = chartFliterName;
+                                    filterMsg.key = chartFliterName+'&'+filter;
+                                    filterList[chartFliterName] = filterList[chartFliterName] || {filters:[]};
+                                    filterList[chartFliterName].filters.push(filterMsg);
+                                }
+                            }                    
                         }
-                    }                    
+                    }
                 }
             }
-            this.filterList = filterList;      
-            console.log("map里，filterList",filterList);
+            let filterArray = [];
+            for (const chartFilter in filterList) {
+                if (Object.hasOwnProperty.call(filterList, chartFilter)) {
+                    filterList[chartFilter].chartOrigin = chartFilter;
+                    filterArray.push(filterList[chartFilter]);
+                }
+            }
+            this.filterList = filterArray;      
+            console.log("filterArray",filterArray);
 
+        },
+        handleMidPileBarSelect({range,chartOrigin,weatherType,date}){
+            if(this.lastDate != date){
+                this.updateMarkerAndprovinceDataByDate(date); 
+                this.lastDate = date;
+            } 
+            let selectTEMRange = range.split("~");
+            let max,min;
+            // console.log(selectTEMRange);
+                if(selectTEMRange.length==2){
+                   max = parseFloat(selectTEMRange[0]);
+                   min = parseFloat(selectTEMRange[1]);
+                }else{
+                  selectTEMRange =  range.split("+");
+                  let exValue = parseFloat(selectTEMRange[0]);
+                  if(exValue == 999999){
+                      max = 1000000;
+                      min = 999999
+                  }
+                  else if (exValue > 0) {
+                      //此处为筛选超过最大值的
+                      max = 999999;
+                      min = exValue;
+                  }else{
+                      //此处为筛选低于最小值的
+                      max = exValue+0.000000001;
+                      min = -999999;
+                  }
+                }
+                this.chartFilterList[chartOrigin][weatherType] = this.chartFilterList[chartOrigin][weatherType] || {};
+                let chartWeatherTypeFilter = this.chartFilterList[chartOrigin][weatherType];
+                // console.log("得到最大最小值：",max,min);
+                //让Map执行removeAllMarkers
+                this.removeAllMarkers();
+                //对provinceMarkers执行addMarkersToCiLayer操作
+                if(this.provinceSelect == '全国' && this.map.getZoom()>5)
+                    this.map.setZoom(6);
+                chartWeatherTypeFilter[weatherType+'&'+range] = this.rangeMarkerHighLevFilter(max,min,weatherType);
+                let filterList = [];
+                // for (const filter in this.left_1_multFilter) {
+                //     if (Object.hasOwnProperty.call(this.left_1_multFilter, filter)) {
+                //         this.left_1_multFilter[filter];
+                        
+                //     }
+                // }
+                for(const filter in chartWeatherTypeFilter){
+                   if(chartWeatherTypeFilter[filter]){
+                    //    console.log("push",this.left_1_multFilter[filter]);
+                       filterList.push(chartWeatherTypeFilter[filter]);
+
+                   } 
+
+                }
+                    // console.log(filterList);
+                
+                //这里最好加上来源名作为name，比如左固定的筛选
+                this.addFilter(this.markersFilters,this.multiFilter(...filterList),'rangeMarkerHighLevFilterBy'+weatherType+`From${chartOrigin}`);
+                console.log("添加rangeMarkerHighLevFilter筛选器");
+                this.addMarkersToCiLayer(this.markersFilters,this.provinceMarkers,true);
+                this.createNewFliterList();
         }
             
         
@@ -1869,7 +2002,7 @@ export default {
         //             // this.createMarkers(this.requestData);
         //             this.changeAllMarkersIcon();
         //             this.ciLayer.redraw();
-        //             // this.addMarkersToCiLayer(undefined,this.showMarkers,true);
+        //             // this.addMarkersToCiLayer(undefined,this.provinceMarkers,true);
         //             this.preZoomRange = 6;
         //         }
         //     }
@@ -1908,9 +2041,10 @@ export default {
 .z-down{
     z-index: 101;
 }
+
 .map-app{
     overflow: hidden;
-    height: 100%;
+    height: 66.6%;
     position: relative;
     #map{
         height: 100%;

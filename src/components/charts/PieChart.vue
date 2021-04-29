@@ -365,7 +365,7 @@ export default {
 
 
                 // console.log(rangeMap);
-
+            console.log("this.weatherType",this.weatherType);
             rangeMap = rangeMap[this.weatherType];
             xAxisData = xAxisData[this.weatherType];
 
@@ -403,7 +403,7 @@ export default {
             // console.log(chartData);
             return chartData
         },
-         getRange(value){
+        getRange(value){
             let range = '999999'
             switch (this.weatherType) {
                  case 'TEM_Max':
@@ -636,10 +636,10 @@ export default {
         },
     },
     watch:{
-        showData(newShowData){
+        provinceData(newProvinceData){
             console.log("Pie监听到更新");
             if(this.echart){
-                let res = this.dealWeatherDataToEchartData(newShowData);
+                let res = this.dealWeatherDataToEchartData(newProvinceData);
                 // console.log(res);
                 this.renderChart(res);
             }
@@ -687,7 +687,7 @@ export default {
                     break;
             }
             if (this.echart) {
-                let res = this.dealWeatherDataToEchartData(this.showData);
+                let res = this.dealWeatherDataToEchartData(this.provinceData);
                 this.renderChart(res);
             }
 
@@ -695,7 +695,7 @@ export default {
     },
     computed:{
         ...mapState({
-            showData: state => state.showData,
+            provinceData: state => state.provinceData,
             weatherType: state => state.weatherType
         })
     }

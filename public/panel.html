@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        .weather-panel{
+            border-radius: 10px;
+            width: 350px; 
+            box-shadow: 0px 0px 15px rgba(0,0,0,0.3);
+        }
+        .weather-panel .weather-panel-title{
+            border-top-left-radius: inherit;
+            border-top-right-radius: inherit;
+            height: 40px;
+            line-height: 40px;
+            font-size: 16px;
+            color: #fff;
+            background-color: #4f575c;
+            text-align: center;
+        }
+        .weather-panel .weather-panel-content{
+            height: 130px;
+        }
+        .weather-panel .weather-panel-content .weather-panel-content-line{
+            display: flex;
+            /* justify-content: space-around; */
+            height: 50%;
+            padding: 0 10px;
+        }
+        .weather-panel .weather-panel-content .weather-panel-content-line .item{
+            flex-basis: 0;
+            flex-grow: 1;
+            padding: 6px 5px;
+            text-align: center;
+            font-size: 13px;
+        }
+        .weather-panel .weather-panel-content .weather-panel-content-line .item .img{
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            /* width: 100%; */
+            height: calc(100% - 13px);
+        }
+        .qiwen{
+            background-image: url("panelIcon/qiwen.png");
+        }
+        .gaowen{
+            background-image: url("panelIcon/gaowen.png");
+        }
+        .diwen{
+            background-image: url("panelIcon/diwen.png");
+        }
+        .tigan{
+            background-image: url("panelIcon/tigan.png");
+        }
+    </style>
+</head>
+<body>
+    <div class="weather-panel">
+        <div class="weather-panel-title">
+            广西省柳州站（2021-03-10 12:00:00）
+        </div>
+        <div class="weather-panel-content">
+            <div class="weather-panel-content-line">
+                <div class="item">
+                    <div class="img qiwen"></div>
+                    <span>温度</span>
+                </div>
+                <div class="item ">
+                    <div class="img gaowen"></div>
+                    <span>最高温度</span>
+                </div>
+                <div class="item ">
+                    <div class="img diwen"></div>
+                    <span>最低温度</span>
+                </div>
+                <div class="item">
+                    <div class="img tigan"></div>
+                    <span>体感温度</span>
+                </div>
+                <div class="item">
+                    <div class="img"></div>
+                    <span>相对湿度</span>
+                </div>
+            </div>
+            <div class="weather-panel-content-line">
+                <div class="item">
+                    <div class="img"></div>
+                    <span>气压</span>
+                </div>
+                <div class="item">
+                    <div class="img"></div>
+                    <span>降雨量</span>
+                </div>
+                <div class="item">
+                    <div class="img"></div>
+                    <span>风力</span>
+                </div>
+                <div class="item">
+                    <div class="img"></div>
+                    <span>能见度</span>
+                </div>
+                <div class="item">
+                    <div class="img"></div>
+                    <span>总云量</span>
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</body>
+</html>

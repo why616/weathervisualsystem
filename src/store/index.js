@@ -6,17 +6,21 @@ Vue.use(Vuex)
 export default new Vuex.Store({
   // strict:true,
   state: {
-    showData:[],
-    weatherType:'TEM'
+    provinceData:[],
+    weatherType:'TEM',
+    showMarkers:[]
   },
   mutations: {
-    updateShowData(state, newShowData){
+    updateProvinceData(state, newProvinceData){
       console.log("触发更新ShowData");
-        state.showData = newShowData;
+        state.provinceData = newProvinceData;
     },
     updateWeatherType(state, newWeatherType){
       console.log("触发更新WeatherType");
         state.weatherType = newWeatherType;
+    },
+    updateShowMarkers(state,newShowMarkers){
+      state.showMarkers = newShowMarkers;
     }
   },
   actions: {
