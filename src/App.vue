@@ -27,9 +27,9 @@
         <any-chart chartOrigin="right_2_multFilter"/>
       </div>
       <div class="chart-item">
-        <any-chart chartOrigin="right_3_multFilter"/>
+        <line-chart chartOrigin="right_3_multFilter"/>
       </div>
-    </div> 
+    </div>  
     <!-- <div class="zzt">
       <Zzt/>
     </div>-->
@@ -45,6 +45,7 @@ import BarChart from "@/components/charts/BarChart.vue"
 import PieChart from "@/components/charts/PieChart.vue"
 import AnyChart from './components/charts/AnyChart.vue';
 import PileBarChart from './components/charts/PileBarChart.vue';
+import LineChart from './components/charts/LineChart.vue';
 // import PieChart from './components/charts/PieChart.vue';
 // import BarChart from './components/charts/BarChart.vue';
 
@@ -66,6 +67,7 @@ export default {
       PieChart,
       AnyChart,
       PileBarChart,
+    LineChart,
     // PieChart
     // BarChart
   }

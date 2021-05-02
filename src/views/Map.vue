@@ -179,7 +179,7 @@ export default {
             pickerOption:{
                 disabledDate(time) {
                     let start = new Date(2021,2,10,0,0,0);
-                    let end = new Date(2021,3,23,12,0,0);
+                    let end = new Date(2021,3,30,14,0,0);
                     // console.log(+start);
                     return time.getTime() < start || time.getTime() > end ;
                 },
@@ -680,10 +680,11 @@ export default {
                     default:
                         break;
                 }
-                marker.bindPopup(`
+                
+               let popup = marker.bindPopup(`
                     <div class="weather-panel">
                         <div class="weather-panel-title">
-                            <span>${s.province}省${s.stationName}站（${s.Date}）</span>
+                            <span onclick="addMarkerToChart()">${s.province}省${s.stationName}站（${s.Date}）</span>
                         </div>
                         <div class="weather-panel-content">
                             <div class="weather-panel-content-line">
@@ -735,10 +736,21 @@ export default {
                     </div>
                     `
                 );
+                popup.on("popupopen",()=>{
+                    window.addMarkerToChart = ()=>{
+                        console.log("emit data",s.stationId,s.province,s.stationName);
+                        this.$bus.$emit('addNewStation',{stationId:s.stationId,province:s.province,stationName:s.stationName});
+
+                    }
+                    // console.log("popup",e)
+                })
+
                 if(!weather_now) console.log(`${s.province} ${s.stationName} ${s.WEP_Now}`)
                  
                 //在这里附上值，供Filter筛选
+                // marker.stationId = s.stationId;
                 marker.province = s.province;
+                // marker.stationName = s.stationName;
                 marker.TEM = s.TEM;
                 marker.TEM_Max = s.TEM_Max;
                 marker.TEM_Min = s.TEM_Min;
@@ -1993,7 +2005,6 @@ export default {
                 this.addMarkersToCiLayer(this.markersFilters,this.provinceMarkers,true);
                 this.createNewFliterList();
         }
-            
         
         // handleIconSizeByZoomLev(currZoomLev){
         //     if(this.preZoomRange == 7){
