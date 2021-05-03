@@ -15,7 +15,9 @@
              <el-select v-model="realSelectedStations"
               multiple
               collapse-tags
-              placeholder="目前已选择的气象站点">
+              clearable
+              placeholder="目前已选择的气象站点"
+              @clear="clearAllSelectedStation">
                 <el-option
                     v-for="item in selectedStations"
                     :key="item.value"
@@ -51,7 +53,7 @@
             </div>
         </div>
      </div>
-     <div class="line-chart">
+     <div class="line-chart" ref="chart">
 
      </div>
  </div>
@@ -59,6 +61,9 @@
 
 <script>
 export default {
+    mounted(){
+        this.initChart();
+    },
     data(){
         return {
             loading:false,
@@ -95,7 +100,9 @@ export default {
             allowAddStation:false,
             show_options_bar:true,
             btn_type:'primary',
-            btn_content:'提交查询(oﾟvﾟ)ノ'
+            btn_content:'提交查询(oﾟvﾟ)ノ',
+            zhongwen:'',
+            unit:''
         }
     },
     watch:{
@@ -108,8 +115,118 @@ export default {
         }
     },
     methods:{
+        initChart(){
+            if(!this.$refs.chart) return;
+            this.echart = echarts.init(this.$refs.chart);
+            this.echart.on('click',(e)=>{
+                console.log(e);
+                // this.$bus.$emit('mid-pileBar-select',{range:e.seriesName,chartOrigin:'mid_pileBar_multFilter',weatherType:this.weather_type_select,date:e.name});   
+
+            });
+                
+        },
+        renderChart(series,xAxisData){
+           let lineOption = {
+               title:{
+                   text:`气象站-${this.zhongwen}-随时间变化情况`
+               },
+                tooltip: {
+                    trigger: 'axis'
+                },
+                legend: {
+                    top:"24px"
+                },
+               dataZoom: [{
+                    type: 'inside'
+                }],
+                grid: {
+                    top:"76px",
+                    left: '3%',
+                    right: '4%',
+                    bottom: '-10px',
+                    containLabel: true
+                },
+               
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: false,
+                    axisTick: {
+                        alignWithLabel: true,
+                        interval:23
+                    },
+                    axisLabel:{
+                        showMinLabel:true,
+                        interval: 23,
+                        rotate:20,
+                        margin:28,
+                        align:'center'
+                    },
+                    data: xAxisData
+                },
+                yAxis: {
+                    type: 'value'
+                },
+                series
+           };
+           this.echart.setOption(lineOption);
+        },
+        dealWeatherDataToEchartSeries(weatherData){
+            let _weather_type_select = this.weather_type_select;
+            // let chartData = [];
+            // let counts = 0;
+            let series = [];
+            let stationMap = {}
+            weatherData.forEach((d)=>{
+                 stationMap[d.Station_Id_C] = stationMap[d.Station_Id_C] || [];
+                 stationMap[d.Station_Id_C].push(d);
+            });
+            for (const sid in stationMap) {
+                if (Object.hasOwnProperty.call(stationMap, sid)) {
+                    let data = [];
+                    let name = '';
+                    stationMap[sid].forEach((i)=>{
+                        if(i[_weather_type_select] != 999999)
+                            data.push([i.Date,i[_weather_type_select]]);
+                    })
+                    this.selectedStations.some(s=>{
+                        return  s.value == sid ? name = s.label:false;
+                        // if(s.value == sid){
+                        //     name = s.label;
+                        //     return true;
+                        // }
+                    })
+                    series.push({
+                        name,
+                        type:'line',
+                        // stack:'value',
+                        data
+                    })
+                    series.reverse();
+                }
+            }
+            return series;
+        },
+        createEveryHoursStringFromFormatStringDate(startDate,endDate){
+            let everyHoursStringArr = [];
+            startDate = this.createDateByformatString(startDate);
+            endDate = this.createDateByformatString(endDate);
+            let currDate = startDate;
+            while(currDate.getTime() <= endDate.getTime()){
+                everyHoursStringArr.push(currDate.format("yyyy-MM-dd hh:mm:ss"));
+                currDate.setTime(currDate.getTime()+3600000);
+            }
+            return everyHoursStringArr;
+        },
+        createDateByformatString(timeStr){
+            let ps = timeStr.split(" ");
+            let pd = ps[0].split("-");
+            let pt = ps.length > 1 ? ps[1].split(":") : [0, 0, 0];
+            return new Date(pd[0], pd[1] - 1, pd[2], pt[0], pt[1], pt[2]);
+        },
         addNewStation({stationId,province,stationName}){
             console.log("receive data",stationId,province,stationName);
+            let _selectedStations = this.selectedStations;
+            for (let index = 0; index < _selectedStations.length; index++) if(_selectedStations[index].value == stationId) return;
             let selectStationOption = {label:`${province}省${stationName}站`,value:stationId}
             this.selectedStations.push(selectStationOption);
             this.realSelectedStations.push(selectStationOption.value);
@@ -117,12 +234,80 @@ export default {
 
         },
         submit(){
-            setTimeout(()=>{
-                 console.log("666");
+            if (this.weather_type_select == '' || this.realSelectedStations.length == 0 || this.rangeTime.length == 0) {
+                this.btn_type = 'danger';
+                this.btn_content = '请填入所有内容w(ﾟДﾟ)w';
+                setTimeout(()=>{
+                    this.btn_type = 'primary';
+                    this.btn_content = '提交查询(oﾟvﾟ)ノ';
+                },2000);
+                return;
+            }
+            switch (this.weather_type_select) {
+                case 'TEM_Max':
+                case 'TEM_Min':
+                case 'TEM':
+                    this.unit = '℃';
+                    this.zhongwen = '温度';
+                    break;
+                case 'RHU':
+                    this.unit = '%';
+                    this.zhongwen = '相对湿度';
+                    break;
+                case 'PRS':
+                case 'PRS_Max':
+                case 'PRS_Min':
+                    this.unit = 'hPa';
+                    this.zhongwen = '气压';
+                    break;
+                case 'PRE_1h':
+                    this.unit = 'mm';
+                    this.zhongwen = '一小时降雨量'
+                    break;
+                case 'windpower':
+                    this.unit = '级';
+                    this.zhongwen = '风力'
+                    break;
+                case 'VIS':
+                    this.unit = 'KM';
+                    this.zhongwen = '能见度'
+                    break;
+                case 'CLO_Cov':
+                    this.unit = '%';
+                    this.zhongwen = '总云量'
+                    break;
+                case 'tigan':
+                     this.unit = '℃';
+                    this.zhongwen = '体感温度'
+                    break;
+                default:
+                    break;
+            }
+            this.loading = true;
+             let params = {
+                type:this.weather_type_select,
+                rangeTime:JSON.stringify(this.rangeTime),
+                stations:JSON.stringify(this.realSelectedStations)
+            };
+            this.$axios.get('/querybystationandtype',{params}).then(({data})=>{
+                let series = this.dealWeatherDataToEchartSeries(data);
+                this.renderChart(series,xAxisData);
                 this.show_options_bar = false;
-            })
+                this.loading = false;
+            });
+            let xAxisData = this.createEveryHoursStringFromFormatStringDate(this.rangeTime[0],this.rangeTime[1]);
+
+            // setTimeout(()=>{
+            //      console.log("666");
+            //     this.show_options_bar = false;
+            // })
            
-        }
+        },
+        clearAllSelectedStation(){
+            this.selectedStations = [];
+            this.realSelectedStations = [];
+        },
+        
     }
 }
 </script>

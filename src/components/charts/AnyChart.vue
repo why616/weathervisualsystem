@@ -314,6 +314,7 @@ export default {
                             interval:0
                         },
                         axisLabel:{
+                            showMinLabel:true,
                             interval: 0,
                             rotate:45
                         }

@@ -24,7 +24,7 @@
        <any-chart chartOrigin="right_1_multFilter"/>
       </div>
       <div class="chart-item">
-        <any-chart chartOrigin="right_2_multFilter"/>
+        <line-chart chartOrigin="right_2_multFilter"/>
       </div>
       <div class="chart-item">
         <line-chart chartOrigin="right_3_multFilter"/>
@@ -78,11 +78,14 @@ export default {
 #app {
   display: flex;
   height: 100%;
-
+  // background-image: url("/background.jpg");
+  // background-size: 100%;
+  // background-repeat: no-repeat;
   .left-chart{
     order: 0;
     width:25%;
-    
+    background-color: rgba(252, 252, 252, 0.5);
+
     .chart-item{
       width: 100%;
       height: 33.3%;
@@ -91,6 +94,8 @@ export default {
   .center-map{
     order: 1;
     flex-grow: 1;
+    background-color: rgba(255, 255, 255);
+
     .line-chart-area{
       height: 33.3%;
     }
@@ -100,6 +105,8 @@ export default {
     order: 2;
     width:25%;
     overflow: hidden;
+    background-color: rgba(250, 250, 250, 0.4);
+
     .chart-item{
       width: 100%;
       height: 33.3%;

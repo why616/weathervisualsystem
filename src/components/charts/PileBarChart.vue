@@ -138,7 +138,7 @@ export default {
                 
         },
         renderChart(series,xAxisData){
-           let lineOption = {
+           let pileBarOption = {
                 tooltip: {
                     trigger: 'axis',
                     axisPointer: {            // 坐标轴指示器，坐标轴触发有效
@@ -146,7 +146,6 @@ export default {
                     }
                 },
                 legend: {
-                    // data: ['直接访问', '邮件营销', '联盟广告', '视频广告', '搜索引擎', '百度', '谷歌', '必应', '其他']
                 },
                 dataZoom: [{
                     type: 'inside'
@@ -167,6 +166,7 @@ export default {
                             interval:23
                         },
                         axisLabel:{
+                            showMinLabel:true,
                             interval: 23,
                             rotate:11,
                             margin:20,
@@ -182,7 +182,7 @@ export default {
                 series
             };
             
-            this.echart.setOption(lineOption);
+            this.echart.setOption(pileBarOption);
         },
         dealWeatherDataToEchartData(weatherData){
             //  let chartData = [];
@@ -369,6 +369,7 @@ export default {
                     series.push(seriesItem);
                 }
             }
+            // series.reverse();
             // xAxisData.forEach(range=>{
             //     //  console.log(range);
             //        let  value = range.split("~")[1];
