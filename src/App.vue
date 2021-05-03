@@ -76,6 +76,7 @@ export default {
 
 <style lang="less" scoped>
 #app {
+  min-width: 1918px;
   display: flex;
   height: 100%;
   // background-image: url("/background.jpg");

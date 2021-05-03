@@ -1,7 +1,7 @@
 <template>
  <div class="line-chart-app" v-loading="loading">
      <div class="function-bar" :class="{'show':show_options_bar}" @click="show_options_bar = true">
-        <div class="function-item" style="margin-right:2%">
+        <div class="function-item" style="margin-right:1%">
             <el-select v-model="weather_type_select"  placeholder="请选择气象信息">
                 <el-option
                     v-for="item in weather_type_options"
@@ -325,6 +325,7 @@ export default {
         width:94%;
         display: flex;
         flex-wrap: wrap;
+
         position: absolute;
         z-index: 1000;
         justify-content: center;
@@ -345,6 +346,8 @@ export default {
             transform: translateX(0%);
         }
         .function-item{
+            // flex-basis: 0;
+            // width: 0;
             flex-shrink: 1;
             // flex-grow: 1;
         }
